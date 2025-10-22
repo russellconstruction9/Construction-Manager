@@ -23,7 +23,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 {/* Mobile Logo - hidden on medium screens and up */}
                 <Link to="/" className="flex items-center gap-2 md:hidden">
                     <SccLogoIcon className="w-8 h-8 text-blue-600" />
-                    <span className="font-bold text-lg text-primary-navy">Stoney Creek</span>
+                    <span className="font-bold text-lg text-primary-navy">SCC</span>
                 </Link>
 
                 {/* Spacer for desktop layout to push user switcher right */}
