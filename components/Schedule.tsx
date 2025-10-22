@@ -12,159 +12,107 @@ import { isSameMonth } from 'date-fns/isSameMonth';
 import { isSameDay } from 'date-fns/isSameDay';
 import { addMonths } from 'date-fns/addMonths';
 import { subMonths } from 'date-fns/subMonths';
-import { isWithinInterval } from 'date-fns/isWithinInterval';
+import { isWithinInterval as isWithin } from 'date-fns/isWithinInterval';
+import { ChevronLeftIcon, ChevronRightIcon } from './icons/Icons';
 import ProjectFilter from './ProjectFilter';
 import DayViewModal from './DayViewModal';
-import { ChevronLeftIcon } from './icons/Icons'; // Using ChevronLeft for prev month
-import { PlusIcon } from './icons/Icons'; // Using PlusIcon as a placeholder for next month
-
-const projectColors = [
-  'bg-blue-200 text-blue-800 border-blue-300',
-  'bg-green-200 text-green-800 border-green-300',
-  'bg-purple-200 text-purple-800 border-purple-300',
-  'bg-amber-200 text-amber-800 border-amber-300',
-  'bg-pink-200 text-pink-800 border-pink-300',
-  'bg-teal-200 text-teal-800 border-teal-300',
-];
-
-const getProjectColor = (projectId: number) => projectColors[projectId % projectColors.length];
 
 const Schedule: React.FC = () => {
   const { projects, tasks } = useData();
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedProjectIds, setSelectedProjectIds] = useState<number[]>(() =>
-    projects.map((p) => p.id)
-  );
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedProjectIds, setSelectedProjectIds] = useState<number[]>(() => projects.map(p => p.id));
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  const days = useMemo(() => {
-    const monthStart = startOfMonth(currentDate);
-    const monthEnd = endOfMonth(currentDate);
-    const startDate = startOfWeek(monthStart);
-    const endDate = endOfWeek(monthEnd);
-    return eachDayOfInterval({ start: startDate, end: endDate });
-  }, [currentDate]);
+  const start = startOfWeek(startOfMonth(currentMonth));
+  const end = endOfWeek(endOfMonth(currentMonth));
+  const days = eachDayOfInterval({ start, end });
 
-  const filteredProjects = useMemo(
-    () => projects.filter((p) => selectedProjectIds.includes(p.id)),
-    [projects, selectedProjectIds]
-  );
+  const filteredProjects = useMemo(() => {
+    return projects.filter(p => selectedProjectIds.includes(p.id));
+  }, [projects, selectedProjectIds]);
 
-  const eventsByDate = useMemo(() => {
-    const events: { [key: string]: { tasks: Task[]; projects: Project[] } } = {};
-    days.forEach((day) => {
-      const isoDate = day.toISOString().split('T')[0];
-      events[isoDate] = { tasks: [], projects: [] };
-    });
+  const filteredTasks = useMemo(() => {
+    return tasks.filter(t => selectedProjectIds.includes(t.projectId));
+  }, [tasks, selectedProjectIds]);
 
-    tasks.forEach((task) => {
-      if (selectedProjectIds.includes(task.projectId)) {
-        const taskDate = task.dueDate.toISOString().split('T')[0];
-        if (events[taskDate]) {
-          events[taskDate].tasks.push(task);
-        }
-      }
-    });
-
-    filteredProjects.forEach((project) => {
-      const projectInterval = { start: project.startDate, end: project.endDate };
-      days.forEach((day) => {
-        if (isWithinInterval(day, projectInterval)) {
-          const dayDate = day.toISOString().split('T')[0];
-          events[dayDate].projects.push(project);
-        }
-      });
-    });
-
-    return events;
-  }, [days, tasks, filteredProjects, selectedProjectIds]);
-
-  const prevMonth = () => setCurrentDate(subMonths(currentDate, 1));
-  const nextMonth = () => setCurrentDate(addMonths(currentDate, 1));
-  const today = () => setCurrentDate(new Date());
+  const getEventsForDay = (day: Date) => {
+    const dailyProjects = filteredProjects.filter(p => isWithin(day, { start: p.startDate, end: p.endDate }));
+    const dailyTasks = filteredTasks.filter(t => isSameDay(t.dueDate, day));
+    return { projects: dailyProjects, tasks: dailyTasks };
+  };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-10rem)]">
-      <div className="lg:w-1/4 xl:w-1/5">
-        <ProjectFilter
-          projects={projects}
-          selectedProjectIds={selectedProjectIds}
-          setSelectedProjectIds={setSelectedProjectIds}
-        />
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Schedule</h1>
       </div>
 
-      <div className="flex-1 flex flex-col bg-white rounded-xl shadow-sm border border-slate-200">
-        <header className="flex items-center justify-between p-4 border-b">
-          <div className="flex items-center gap-4">
-            <button onClick={prevMonth} className="p-1 rounded-full hover:bg-gray-100">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+        <div className="lg:col-span-1">
+          <ProjectFilter selectedProjectIds={selectedProjectIds} onSelectionChange={setSelectedProjectIds} />
+        </div>
+        <div className="lg:col-span-3 bg-white p-4 sm:p-6 border border-slate-200 rounded-xl shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <button
+              onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+              className="p-2 rounded-full hover:bg-gray-100"
+              aria-label="Previous month"
+            >
               <ChevronLeftIcon className="w-6 h-6" />
             </button>
-            <h2 className="text-xl font-bold text-gray-800 w-40 text-center">
-              {format(currentDate, 'MMMM yyyy')}
-            </h2>
-            <button onClick={nextMonth} className="p-1 rounded-full hover:bg-gray-100">
-              <ChevronLeftIcon className="w-6 h-6 rotate-180" />
+            <h2 className="text-xl font-bold">{format(currentMonth, 'MMMM yyyy')}</h2>
+            <button
+              onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+              className="p-2 rounded-full hover:bg-gray-100"
+              aria-label="Next month"
+            >
+              <ChevronRightIcon className="w-6 h-6" />
             </button>
           </div>
-          <button onClick={today} className="px-4 py-2 text-sm font-medium border rounded-md hover:bg-gray-50">
-            Today
-          </button>
-        </header>
-
-        <div className="grid grid-cols-7 flex-1">
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-            <div key={day} className="text-center font-bold text-sm text-gray-500 py-2 border-b border-r">
-              {day}
-            </div>
-          ))}
-          {days.map((day) => {
-            const dayEvents = eventsByDate[day.toISOString().split('T')[0]];
-            return (
-              <div
-                key={day.toString()}
-                className={`border-b border-r p-2 flex flex-col cursor-pointer hover:bg-blue-50 transition-colors relative ${
-                  !isSameMonth(day, currentDate) ? 'bg-gray-50' : ''
-                }`}
-                onClick={() => setSelectedDate(day)}
-              >
-                <time
-                  dateTime={format(day, 'yyyy-MM-dd')}
-                  className={`text-sm font-semibold ${
-                    isSameDay(day, new Date())
-                      ? 'bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center'
-                      : ''
+          <div className="grid grid-cols-7 gap-px text-center text-xs font-semibold text-gray-500 border-t border-l border-gray-200 bg-gray-200">
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+              <div key={day} className="py-2 bg-white">{day}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-px bg-gray-200 border-l border-gray-200">
+            {days.map(day => {
+              const { projects: dailyProjects, tasks: dailyTasks } = getEventsForDay(day);
+              return (
+                <div
+                  key={day.toString()}
+                  onClick={() => setSelectedDate(day)}
+                  className={`relative p-2 h-28 overflow-hidden cursor-pointer transition-colors bg-white border-r border-b border-gray-200 ${
+                    isSameMonth(day, currentMonth) ? 'hover:bg-blue-50' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
                   }`}
                 >
-                  {format(day, 'd')}
-                </time>
-                <div className="mt-1 space-y-1 overflow-y-auto flex-1">
-                    {dayEvents?.projects.slice(0, 2).map((project) => (
-                        <div key={`proj-${project.id}`} className={`px-2 py-0.5 text-xs font-semibold rounded truncate ${getProjectColor(project.id)}`}>
-                            {project.name}
-                        </div>
+                  <time
+                    dateTime={format(day, 'yyyy-MM-dd')}
+                    className={`font-semibold ${isSameDay(day, new Date()) ? 'bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center' : ''}`}
+                  >
+                    {format(day, 'd')}
+                  </time>
+                  <div className="mt-1 space-y-1 text-xs text-left">
+                    {dailyProjects.slice(0, 1).map(p => (
+                      <div key={`p-${p.id}`} className="px-1 py-0.5 bg-blue-100 text-blue-800 rounded truncate">{p.name}</div>
                     ))}
-                    {dayEvents?.tasks.slice(0, 2).map((task) => (
-                        <div key={`task-${task.id}`} className="px-2 py-0.5 text-xs bg-gray-200 rounded truncate">
-                            {task.title}
-                        </div>
+                    {dailyTasks.slice(0, 1).map(t => (
+                      <div key={`t-${t.id}`} className="px-1 py-0.5 bg-amber-100 text-amber-800 rounded truncate">{t.title}</div>
                     ))}
-                    {((dayEvents?.projects.length || 0) + (dayEvents?.tasks.length || 0)) > 4 && (
-                        <div className="text-xs text-gray-500 font-semibold mt-1">
-                            + {((dayEvents?.projects.length || 0) + (dayEvents?.tasks.length || 0)) - 4} more
-                        </div>
+                    {(dailyProjects.length + dailyTasks.length) > 2 && (
+                       <div className="text-gray-500 font-medium">+ {dailyProjects.length + dailyTasks.length - 2} more</div>
                     )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
-      
       {selectedDate && (
         <DayViewModal
-            date={selectedDate}
-            onClose={() => setSelectedDate(null)}
-            events={eventsByDate[selectedDate.toISOString().split('T')[0]]}
+          date={selectedDate}
+          onClose={() => setSelectedDate(null)}
+          events={getEventsForDay(selectedDate)}
         />
       )}
     </div>

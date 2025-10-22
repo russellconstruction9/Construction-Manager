@@ -57,7 +57,7 @@ const ProjectReport: React.FC<ReportData> = ({ project, tasks, timeLogs, photos,
                 </div>
                 <div className="text-right">
                     <SccLogoIcon className="w-16 h-16 text-primary-navy" />
-                    <p className="font-bold text-primary-navy mt-1">Stoney Creek Construction</p>
+                    <p className="font-bold text-primary-navy mt-1">SCC</p>
                 </div>
             </header>
             <div className="flex justify-between text-sm mt-2 mb-8 text-gray-500">

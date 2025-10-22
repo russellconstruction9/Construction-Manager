@@ -4,6 +4,7 @@ import { useData } from '../hooks/useDataContext';
 import { TaskStatus } from '../types';
 import { isThisWeek } from 'date-fns';
 import { Link } from 'react-router-dom';
+import ProjectListItem from './ProjectListItem'; // Import the new detailed component
 
 const Dashboard: React.FC = () => {
     const { projects, tasks, users, currentUser, timeLogs } = useData();
@@ -17,8 +18,6 @@ const Dashboard: React.FC = () => {
         )
     }
 
-    const activeProjects = useMemo(() => projects.filter(p => p.status === 'In Progress').length, [projects]);
-    
     // Time tracking data
     const userTimeLogsThisWeek = useMemo(() => timeLogs.filter(log => 
         log.userId === currentUser?.id && 
@@ -42,6 +41,8 @@ const Dashboard: React.FC = () => {
     // Team status
     const teamClockedIn = useMemo(() => users.filter(u => u.isClockedIn).length, [users]);
     
+    const projectsInProgress = useMemo(() => projects.filter(p => p.status === 'In Progress'), [projects]);
+
     return (
         <div className="space-y-6">
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
@@ -96,24 +97,14 @@ const Dashboard: React.FC = () => {
             </div>
 
             <Card>
-                <h2 className="text-xl font-bold mb-4">Projects Overview ({activeProjects})</h2>
-                {projects.length > 0 ? (
-                    <ul className="space-y-3">
-                        {projects.slice(0,5).map(project => (
-                            <li key={project.id}>
-                                <Link to={`/projects/${project.id}`} className="block p-2 -m-2 rounded-lg hover:bg-gray-50">
-                                    <p className="font-medium flex justify-between">
-                                        <span>{project.name}</span>
-                                        <span className="text-gray-500">{project.status}</span>
-                                    </p>
-                                    <div className="w-full bg-gray-200 rounded-full h-2.5 mt-1">
-                                        <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: project.status === 'Completed' ? '100%' : '65%' }}></div>
-                                    </div>
-                                </Link>
-                            </li>
+                <h2 className="text-xl font-bold mb-4">Projects Overview ({projectsInProgress.length})</h2>
+                {projectsInProgress.length > 0 ? (
+                    <div className="space-y-4">
+                        {projectsInProgress.slice(0, 5).map(project => (
+                           <ProjectListItem key={project.id} project={project} />
                         ))}
-                    </ul>
-                 ) : <p className="text-gray-500">No projects have been added yet.</p>}
+                    </div>
+                ) : <p className="text-gray-500">No projects are currently in progress.</p>}
             </Card>
         </div>
     );

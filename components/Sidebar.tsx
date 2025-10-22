@@ -19,7 +19,7 @@ const Sidebar: React.FC = () => {
       <div className="h-16 flex items-center justify-start px-4 border-b border-white/20">
         <Link to="/" className="flex items-center gap-3">
           <SccLogoIcon className="w-8 h-8 text-blue-600" />
-          <span className="font-bold text-xl text-white">Stoney Creek</span>
+          <span className="font-bold text-xl text-white">SCC</span>
         </Link>
       </div>
       <nav className="flex-1 p-4 space-y-2">
