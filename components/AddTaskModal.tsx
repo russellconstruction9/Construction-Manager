@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import Button from './Button';
 import { useData } from '../hooks/useDataContext';
@@ -6,15 +6,22 @@ import { useData } from '../hooks/useDataContext';
 interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
+  projectId?: number;
 }
 
-const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose }) => {
+const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, projectId: defaultProjectId }) => {
     const { addTask, users, projects } = useData();
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [projectId, setProjectId] = useState<number | ''>('');
     const [assigneeId, setAssigneeId] = useState<number | ''>('');
     const [dueDate, setDueDate] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setProjectId(defaultProjectId || '');
+    }
+  }, [isOpen, defaultProjectId]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +38,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose }) => {
     });
     setTitle('');
     setDescription('');
-    setProjectId('');
+    setProjectId(defaultProjectId || '');
     setAssigneeId('');
     setDueDate('');
     onClose();
@@ -57,7 +64,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose }) => {
         </div>
         <div>
             <label htmlFor="project" className="block text-sm font-medium text-gray-700">Project</label>
-            <select id="project" value={projectId} onChange={e => setProjectId(Number(e.target.value))} className="mt-1 block w-full rounded-md border-slate-300" required disabled={!canSubmit}>
+            <select id="project" value={projectId} onChange={e => setProjectId(Number(e.target.value))} className="mt-1 block w-full rounded-md border-slate-300" required disabled={!canSubmit || !!defaultProjectId}>
                 <option value="" disabled>Select a project</option>
                 {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>

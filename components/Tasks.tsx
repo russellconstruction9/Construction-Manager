@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import Card from './Card';
 import { useData } from '../hooks/useDataContext';
-// FIX: Added Task to the import statement for cleaner type usage.
 import { Task, TaskStatus } from '../types';
 import Button from './Button';
-import { PlusIcon } from './icons/Icons';
+import { PlusIcon, ChevronLeftIcon } from './icons/Icons';
 import { format } from 'date-fns';
 import AddTaskModal from './AddTaskModal';
 import EmptyState from './EmptyState';
+import { useParams, Link } from 'react-router-dom';
 
 
 const TaskCard: React.FC<{ task: Task }> = React.memo(({ task }) => {
@@ -44,23 +44,40 @@ const TaskCard: React.FC<{ task: Task }> = React.memo(({ task }) => {
 });
 
 const Tasks: React.FC = () => {
-    const { tasks } = useData();
+    const { tasks, projects } = useData();
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const { projectId } = useParams<{ projectId: string }>();
 
-    const todoTasks = tasks.filter(t => t.status === TaskStatus.ToDo);
-    const inProgressTasks = tasks.filter(t => t.status === TaskStatus.InProgress);
-    const doneTasks = tasks.filter(t => t.status === TaskStatus.Done);
+    const project = projectId ? projects.find(p => p.id === Number(projectId)) : null;
+    
+    const filteredTasks = projectId 
+        ? tasks.filter(t => t.projectId === Number(projectId))
+        : tasks;
+
+    const todoTasks = filteredTasks.filter(t => t.status === TaskStatus.ToDo);
+    const inProgressTasks = filteredTasks.filter(t => t.status === TaskStatus.InProgress);
+    const doneTasks = filteredTasks.filter(t => t.status === TaskStatus.Done);
 
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Tasks</h1>
+                 <div>
+                    {project && (
+                        <Link to={`/projects/${projectId}`} className="inline-flex items-center text-sm font-medium text-gray-600 hover:text-gray-900 mb-1">
+                           <ChevronLeftIcon className="w-5 h-5 mr-2" />
+                           Back to {project.name}
+                        </Link>
+                    )}
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+                         {project ? `Tasks` : 'All Tasks'}
+                    </h1>
+                </div>
                 <Button onClick={() => setIsModalOpen(true)}>
                     <PlusIcon className="w-5 h-5 mr-2 -ml-1" />
                     New Task
                 </Button>
             </div>
-            {tasks.length > 0 ? (
+            {filteredTasks.length > 0 ? (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
                         <h2 className="text-xl font-bold text-slate-700">To Do ({todoTasks.length})</h2>
@@ -77,13 +94,17 @@ const Tasks: React.FC = () => {
                 </div>
             ) : (
                 <EmptyState
-                    title="No Tasks Yet"
+                    title={project ? "No Tasks For This Project" : "No Tasks Yet"}
                     message="Get started by creating your first task."
                     buttonText="New Task"
                     onButtonClick={() => setIsModalOpen(true)}
                 />
             )}
-            <AddTaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+            <AddTaskModal 
+                isOpen={isModalOpen} 
+                onClose={() => setIsModalOpen(false)} 
+                projectId={projectId ? Number(projectId) : undefined} 
+            />
         </div>
     );
 };

@@ -33,7 +33,6 @@ const ProjectDetails: React.FC = () => {
         try {
             const projectTimeLogs = timeLogs.filter(log => log.projectId === project.id);
             const projectTasks = tasks.filter(task => task.projectId === project.id);
-            // FIX: The `getPhotosForProject` function requires both the project ID and the photo metadata array.
             const projectPhotos = await getPhotosForProject(project.id, project.photos);
 
             await generatePdfReport({
@@ -103,10 +102,12 @@ const ProjectDetails: React.FC = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <Card className="lg:col-span-2">
-                    <h2 className="text-xl font-bold mb-4">Tasks ({projectTasks.length})</h2>
+                    <Link to={`/projects/${project.id}/tasks`}>
+                        <h2 className="text-xl font-bold mb-4 hover:text-blue-600">Tasks ({projectTasks.length})</h2>
+                    </Link>
                     {projectTasks.length > 0 ? (
                         <ul className="space-y-4">
-                            {projectTasks.map(task => {
+                            {projectTasks.slice(0, 3).map(task => {
                                 const assignee = users.find(u => u.id === task.assigneeId);
                                 return (
                                     <li key={task.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -121,10 +122,16 @@ const ProjectDetails: React.FC = () => {
                                     </li>
                                 );
                             })}
+                             {projectTasks.length > 3 && (
+                                <p className="text-sm text-gray-500 pt-2 text-center">... and {projectTasks.length - 3} more</p>
+                            )}
                         </ul>
                     ) : (
                         <p className="text-gray-500">No tasks assigned to this project yet.</p>
                     )}
+                     <Link to={`/projects/${project.id}/tasks`} className="mt-4 w-full block text-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700">
+                        View All / Add Task
+                    </Link>
                 </Card>
 
                 <div className="space-y-6">

@@ -8,10 +8,52 @@ import { endOfWeek } from 'date-fns/endOfWeek';
 import { isWithinInterval } from 'date-fns/isWithinInterval';
 import { format } from 'date-fns/format';
 
-export const generatePayrollReport = async (user: User, allLogs: TimeLog[], projects: Project[]) => {
+// Helper to dynamically load scripts and wait for them to be ready.
+const scriptPromises = new Map<string, Promise<void>>();
+
+const loadScript = (url: string): Promise<void> => {
+    if (scriptPromises.has(url)) {
+        return scriptPromises.get(url)!;
+    }
+    const promise = new Promise<void>((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = url;
+        script.async = true;
+        script.crossOrigin = 'anonymous'; // Added for better cross-origin compatibility
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error(`Failed to load script: ${url}`));
+        document.head.appendChild(script);
+    });
+    scriptPromises.set(url, promise);
+    return promise;
+}
+
+const checkPdfLibraries = async (): Promise<void> => {
     // @ts-ignore
-    if (!window.jspdf || !window.html2canvas) {
-        alert("PDF generation libraries are not available. Please check your internet connection and try again.");
+    if (window.jspdf && window.html2canvas) {
+        return;
+    }
+    try {
+        await Promise.all([
+            loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
+            loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js')
+        ]);
+        // @ts-ignore
+        if (!window.jspdf || !window.html2canvas) {
+             throw new Error("Scripts loaded but were not found on the window object.");
+        }
+    } catch (error) {
+        console.error("PDF library loading failed:", error);
+        throw new Error("PDF libraries did not load correctly. Please check your network connection and ad-blockers.");
+    }
+};
+
+export const generatePayrollReport = async (user: User, allLogs: TimeLog[], projects: Project[]) => {
+    try {
+        await checkPdfLibraries();
+    } catch (error) {
+        console.error(error);
+        alert((error as Error).message || "PDF generation libraries are not available. Please check your internet connection and try again.");
         return;
     }
 
