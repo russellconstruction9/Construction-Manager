@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { User, TimeLog, Project } from '../types';
+import { User, TimeLog, Project, Location } from '../types';
 import { format } from 'date-fns';
 import { SccLogoIcon } from './icons/Icons';
 
@@ -14,15 +14,57 @@ interface PayrollReportProps {
     onRendered: () => void;
 }
 
+// Renders a map image linked to Google Maps for a more detailed view.
+const MapImage: React.FC<{ location?: Location, imageUrl?: string }> = ({ location, imageUrl }) => {
+    if (!location || !imageUrl) {
+        return <span className="text-gray-400 text-xs">No Map</span>;
+    }
+    return (
+        <a
+            href={`https://www.google.com/maps?q=${location.lat},${location.lng}`}
+            target="_blank"
+            rel="noopener noreferrer"
+        >
+            <img 
+                src={imageUrl} 
+                alt="Map of location" 
+                crossOrigin="anonymous" // Important for html2canvas to render cross-origin images
+                className="w-20 h-14 object-cover rounded-md border border-gray-200 report-map-image" 
+            />
+        </a>
+    );
+};
+
+
 const PayrollReport: React.FC<PayrollReportProps> = ({ user, logs, projects, weekStart, weekEnd, totalHours, totalPay, onRendered }) => {
     
     useEffect(() => {
-        // A simple timeout to ensure rendering is complete. For this data-heavy table,
-        // it's a straightforward way to wait for the DOM to be ready.
-        const timer = setTimeout(() => {
-            onRendered();
-        }, 50); // A minimal delay
-        return () => clearTimeout(timer);
+        // This effect waits for all map images to load before calling the onRendered callback
+        // to ensure they are captured in the PDF.
+        const images = document.querySelectorAll<HTMLImageElement>('.report-map-image');
+        if (images.length === 0) {
+            // If there are no images, we can signal readiness right away.
+            requestAnimationFrame(() => onRendered());
+            return;
+        }
+
+        const promises = Array.from(images).map(img => {
+            return new Promise<void>(resolve => {
+                if (img.complete) {
+                    resolve();
+                } else {
+                    img.addEventListener('load', () => resolve(), { once: true });
+                    img.addEventListener('error', () => resolve(), { once: true }); // Also resolve on error to not block PDF generation
+                }
+            });
+        });
+
+        Promise.all(promises).then(() => {
+            // Use requestAnimationFrame to wait for the browser to paint the final layout
+            requestAnimationFrame(() => {
+                onRendered();
+            });
+        });
     }, [onRendered]);
 
     const getProjectName = (id: number) => projects.find(p => p.id === id)?.name || 'N/A';
@@ -70,18 +112,22 @@ const PayrollReport: React.FC<PayrollReportProps> = ({ user, logs, projects, wee
                             <th className="p-2">Date</th>
                             <th className="p-2">Project</th>
                             <th className="p-2">Clock In</th>
+                            <th className="p-2">In Map</th>
                             <th className="p-2">Clock Out</th>
+                            <th className="p-2">Out Map</th>
                             <th className="p-2 text-right">Duration (Hrs)</th>
                             <th className="p-2 text-right">Line Total</th>
                         </tr>
                     </thead>
                     <tbody>
                         {logs.sort((a,b) => a.clockIn.getTime() - b.clockIn.getTime()).map(log => (
-                            <tr key={log.id} className="border-b">
+                            <tr key={log.id} className="border-b align-top">
                                 <td className="p-2 font-medium">{format(log.clockIn, 'E, MMM d')}</td>
                                 <td className="p-2">{getProjectName(log.projectId)}</td>
                                 <td className="p-2">{format(log.clockIn, 'p')}</td>
+                                <td className="p-2"><MapImage location={log.clockInLocation} imageUrl={log.clockInMapImage} /></td>
                                 <td className="p-2">{log.clockOut ? format(log.clockOut, 'p') : 'N/A'}</td>
+                                <td className="p-2"><MapImage location={log.clockOutLocation} imageUrl={log.clockOutMapImage} /></td>
                                 <td className="p-2 text-right font-mono">{msToHours(log.durationMs)}</td>
                                 <td className="p-2 text-right font-mono font-semibold">${log.cost?.toFixed(2) || '0.00'}</td>
                             </tr>
@@ -89,7 +135,7 @@ const PayrollReport: React.FC<PayrollReportProps> = ({ user, logs, projects, wee
                     </tbody>
                     <tfoot className="font-bold bg-slate-100">
                         <tr>
-                            <td colSpan={4} className="p-2 text-right">Weekly Totals:</td>
+                            <td colSpan={6} className="p-2 text-right">Weekly Totals:</td>
                             <td className="p-2 text-right font-mono text-base">{totalHours.toFixed(2)}</td>
                             <td className="p-2 text-right font-mono text-base">${totalPay.toFixed(2)}</td>
                         </tr>

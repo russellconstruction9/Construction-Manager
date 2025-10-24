@@ -21,20 +21,18 @@ const getStoredItem = <T,>(key: string, defaultValue: T): T => {
     }
 };
 
-const getMapImageUrl = async (location: Location): Promise<string | undefined> => {
-    if (!process.env.API_KEY) {
-        console.error("Google Maps API key is missing.");
-        return undefined;
-    }
-    const url = `https://maps.googleapis.com/maps/api/staticmap?center=${location.lat},${location.lng}&zoom=15&size=200x150&maptype=roadmap&markers=color:red%7C${location.lat},${location.lng}&key=${process.env.API_KEY}`;
-
+// Fetches the map image and converts it to a Data URL to embed it directly.
+// This is more reliable for PDF generation as it avoids cross-origin issues.
+const getMapImageDataUrl = async (location: Location): Promise<string | undefined> => {
+    const url = `https://staticmap.openstreetmap.cz/staticmap.php?center=${location.lat},${location.lng}&zoom=15&size=200x150&maptype=mapnik&markers=${location.lat},${location.lng},red-pushpin`;
     try {
         const response = await fetch(url);
         if (!response.ok) {
-            console.error("Failed to fetch map image:", response.statusText);
+            console.error(`Failed to fetch map image: ${response.statusText}`);
             return undefined;
         }
         const blob = await response.blob();
+        
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onloadend = () => resolve(reader.result as string);
@@ -46,6 +44,7 @@ const getMapImageUrl = async (location: Location): Promise<string | undefined> =
         return undefined;
     }
 };
+
 
 interface DataContextType {
   users: User[];
@@ -65,7 +64,7 @@ interface DataContextType {
   switchJob: (newProjectId: number) => void;
   addPunchListItem: (projectId: number, text: string) => void;
   togglePunchListItem: (projectId: number, itemId: number) => void;
-  addPhoto: (projectId: number, imageDataUrl: string, description: string) => Promise<void>;
+  addPhoto: (projectId: number, imageDataUrls: string[], description: string) => Promise<void>;
   addInventoryItem: (item: Omit<InventoryItem, 'id'>) => void;
   updateInventoryItemQuantity: (itemId: number, newQuantity: number) => void;
   updateInventoryItem: (itemId: number, data: Partial<Omit<InventoryItem, 'id' | 'quantity'>>) => void;
@@ -180,118 +179,115 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
   }, []);
 
-  const toggleClockInOut = useCallback((projectId?: number) => {
+  const toggleClockInOut = useCallback(async (projectId?: number) => {
     if (!currentUser) return;
 
     if (currentUser.isClockedIn) {
-      getCurrentLocation().then(async location => {
-          const clockInTime = currentUser.clockInTime;
-          if (!clockInTime) return;
-          const existingLogIndex = timeLogs.findIndex(log => log.userId === currentUser.id && !log.clockOut);
-          if (existingLogIndex === -1) return;
+      const location = await getCurrentLocation();
+      const clockInTime = currentUser.clockInTime;
+      if (!clockInTime) return;
+      
+      const existingLogIndex = timeLogs.findIndex(log => log.userId === currentUser.id && !log.clockOut);
+      if (existingLogIndex === -1) return;
 
-          const now = new Date();
-          const durationMs = now.getTime() - clockInTime.getTime();
-          const hoursWorked = durationMs / (1000 * 60 * 60);
-          const cost = hoursWorked * currentUser.hourlyRate;
-          const mapImageUrl = location ? await getMapImageUrl(location) : undefined;
-          
-          const updatedLog: TimeLog = { 
-            ...timeLogs[existingLogIndex], 
-            clockOut: now, 
-            durationMs, 
-            cost, 
-            clockOutLocation: location,
-            clockOutMapImage: mapImageUrl
-          };
-          const newTimeLogs = [...timeLogs];
-          newTimeLogs[existingLogIndex] = updatedLog;
+      const now = new Date();
+      const durationMs = now.getTime() - clockInTime.getTime();
+      const hoursWorked = durationMs / (1000 * 60 * 60);
+      const cost = hoursWorked * currentUser.hourlyRate;
+      const mapImageUrl = location ? await getMapImageDataUrl(location) : undefined;
+      
+      const updatedLog: TimeLog = { 
+        ...timeLogs[existingLogIndex], 
+        clockOut: now, 
+        durationMs, 
+        cost, 
+        clockOutLocation: location,
+        clockOutMapImage: mapImageUrl
+      };
+      const newTimeLogs = [...timeLogs];
+      newTimeLogs[existingLogIndex] = updatedLog;
 
-          setTimeLogs(newTimeLogs.sort((a, b) => b.clockIn.getTime() - a.clockIn.getTime()));
-          
-          const updatedUser = { ...currentUser, isClockedIn: false, clockInTime: undefined, currentProjectId: undefined };
-          setCurrentUser(updatedUser);
-          setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
+      setTimeLogs(newTimeLogs.sort((a, b) => b.clockIn.getTime() - a.clockIn.getTime()));
+      
+      const updatedUser = { ...currentUser, isClockedIn: false, clockInTime: undefined, currentProjectId: undefined };
+      setCurrentUser(updatedUser);
+      setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
 
-          const clockedOutProjectId = timeLogs[existingLogIndex].projectId;
-          setProjects(prev => prev.map(p => p.id === clockedOutProjectId ? { ...p, currentSpend: p.currentSpend + cost } : p));
-      });
+      const clockedOutProjectId = timeLogs[existingLogIndex].projectId;
+      setProjects(prev => prev.map(p => p.id === clockedOutProjectId ? { ...p, currentSpend: p.currentSpend + cost } : p));
     } else {
       if (!projectId) return;
-      getCurrentLocation().then(async location => {
-          const mapImageUrl = location ? await getMapImageUrl(location) : undefined;
-          const clockInTime = new Date();
-          const updatedUser = { ...currentUser, isClockedIn: true, clockInTime, currentProjectId: projectId };
-          
-          const newLog: TimeLog = { 
-            id: Math.max(0, ...timeLogs.map(l => l.id)) + 1, 
-            userId: currentUser.id, 
-            projectId: projectId, 
-            clockIn: clockInTime, 
-            clockInLocation: location,
-            clockInMapImage: mapImageUrl
-          };
-          setTimeLogs(prev => [newLog, ...prev]);
+      const location = await getCurrentLocation();
+      const mapImageUrl = location ? await getMapImageDataUrl(location) : undefined;
+      const clockInTime = new Date();
+      const updatedUser = { ...currentUser, isClockedIn: true, clockInTime, currentProjectId: projectId };
+      
+      const newLog: TimeLog = { 
+        id: Math.max(0, ...timeLogs.map(l => l.id)) + 1, 
+        userId: currentUser.id, 
+        projectId: projectId, 
+        clockIn: clockInTime, 
+        clockInLocation: location,
+        clockInMapImage: mapImageUrl
+      };
+      setTimeLogs(prev => [newLog, ...prev]);
 
-          setCurrentUser(updatedUser);
-          setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
-      });
+      setCurrentUser(updatedUser);
+      setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
     }
-  }, [currentUser, timeLogs, getCurrentLocation]);
+  }, [currentUser, timeLogs, projects, getCurrentLocation]);
 
-  const switchJob = useCallback((newProjectId: number) => {
+  const switchJob = useCallback(async (newProjectId: number) => {
     if (!currentUser || !currentUser.isClockedIn) return;
     if (newProjectId === currentUser.currentProjectId) return;
 
     // Step 1: Clock out from the current job.
-    getCurrentLocation().then(async location => {
-        const clockInTime = currentUser.clockInTime;
-        if (!clockInTime) return;
-        
-        const existingLogIndex = timeLogs.findIndex(log => log.userId === currentUser.id && !log.clockOut);
-        if (existingLogIndex === -1) return;
+    const location = await getCurrentLocation();
+    const clockInTime = currentUser.clockInTime;
+    if (!clockInTime) return;
+    
+    const existingLogIndex = timeLogs.findIndex(log => log.userId === currentUser.id && !log.clockOut);
+    if (existingLogIndex === -1) return;
 
-        const now = new Date();
-        const durationMs = now.getTime() - clockInTime.getTime();
-        const hoursWorked = durationMs / (1000 * 60 * 60);
-        const cost = hoursWorked * currentUser.hourlyRate;
-        const mapImageUrl = location ? await getMapImageUrl(location) : undefined;
-        
-        const updatedLog: TimeLog = { 
-          ...timeLogs[existingLogIndex], 
-          clockOut: now, 
-          durationMs, 
-          cost, 
-          clockOutLocation: location,
-          clockOutMapImage: mapImageUrl
-        };
-        
-        const tempTimeLogs = [...timeLogs];
-        tempTimeLogs[existingLogIndex] = updatedLog;
+    const now = new Date();
+    const durationMs = now.getTime() - clockInTime.getTime();
+    const hoursWorked = durationMs / (1000 * 60 * 60);
+    const cost = hoursWorked * currentUser.hourlyRate;
+    const mapImageUrl = location ? await getMapImageDataUrl(location) : undefined;
+    
+    const updatedLog: TimeLog = { 
+      ...timeLogs[existingLogIndex], 
+      clockOut: now, 
+      durationMs, 
+      cost, 
+      clockOutLocation: location,
+      clockOutMapImage: mapImageUrl
+    };
+    
+    const tempTimeLogs = [...timeLogs];
+    tempTimeLogs[existingLogIndex] = updatedLog;
 
-        const clockedOutProjectId = timeLogs[existingLogIndex].projectId;
-        const tempProjects = projects.map(p => p.id === clockedOutProjectId ? { ...p, currentSpend: p.currentSpend + cost } : p);
+    const clockedOutProjectId = timeLogs[existingLogIndex].projectId;
+    const tempProjects = projects.map(p => p.id === clockedOutProjectId ? { ...p, currentSpend: p.currentSpend + cost } : p);
 
-        // Step 2: Clock in to the new job immediately.
-        getCurrentLocation().then(async newLocation => {
-            const newMapImageUrl = newLocation ? await getMapImageUrl(newLocation) : undefined;
-            const newClockInTime = new Date(); // Use a fresh timestamp for accuracy
-            const updatedUser = { ...currentUser, isClockedIn: true, clockInTime: newClockInTime, currentProjectId: newProjectId };
-            const newLog: TimeLog = { 
-              id: Math.max(0, ...tempTimeLogs.map(l => l.id)) + 1, 
-              userId: currentUser.id, 
-              projectId: newProjectId, 
-              clockIn: newClockInTime, 
-              clockInLocation: newLocation,
-              clockInMapImage: newMapImageUrl
-            };
-            
-            setTimeLogs([newLog, ...tempTimeLogs].sort((a, b) => b.clockIn.getTime() - a.clockIn.getTime()));
-            setProjects(tempProjects);
-            setCurrentUser(updatedUser);
-            setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
-        });
-    });
+    // Step 2: Clock in to the new job immediately.
+    const newLocation = await getCurrentLocation();
+    const newMapImageUrl = newLocation ? await getMapImageDataUrl(newLocation) : undefined;
+    const newClockInTime = new Date(); // Use a fresh timestamp for accuracy
+    const updatedUser = { ...currentUser, isClockedIn: true, clockInTime: newClockInTime, currentProjectId: newProjectId };
+    const newLog: TimeLog = { 
+      id: Math.max(0, ...tempTimeLogs.map(l => l.id)) + 1, 
+      userId: currentUser.id, 
+      projectId: newProjectId, 
+      clockIn: newClockInTime, 
+      clockInLocation: newLocation,
+      clockInMapImage: newMapImageUrl
+    };
+    
+    setTimeLogs([newLog, ...tempTimeLogs].sort((a, b) => b.clockIn.getTime() - a.clockIn.getTime()));
+    setProjects(tempProjects);
+    setCurrentUser(updatedUser);
+    setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
   }, [currentUser, timeLogs, projects, getCurrentLocation]);
 
   const addPunchListItem = useCallback((projectId: number, text: string) => {
@@ -302,23 +298,34 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setProjects(prev => prev.map(p => p.id === projectId ? { ...p, punchList: p.punchList.map(item => item.id === itemId ? { ...item, isComplete: !item.isComplete } : item) } : p));
   }, []);
 
-  const addPhoto = useCallback(async (projectId: number, imageDataUrl: string, description: string) => {
+  const addPhoto = useCallback(async (projectId: number, imageDataUrls: string[], description: string) => {
     setProjects(prev => {
         const project = prev.find(p => p.id === projectId);
         if (!project) return prev;
     
-        const newPhoto: Omit<ProjectPhoto, 'imageDataUrl'> = {
-          id: Math.max(0, ...project.photos.map(p => p.id)) + 1,
-          description,
-          dateAdded: new Date(),
-        };
+        const dateAdded = new Date();
+        let nextId = Math.max(0, ...project.photos.map(p => p.id)) + 1;
+        
+        const newPhotos: Omit<ProjectPhoto, 'imageDataUrl'>[] = [];
+        
+        imageDataUrls.forEach((url) => {
+            const photoId = nextId++;
+            const newPhoto: Omit<ProjectPhoto, 'imageDataUrl'> = {
+              id: photoId,
+              description,
+              dateAdded, // same timestamp for the batch
+            };
+            newPhotos.push(newPhoto);
     
-        setPhoto(projectId, newPhoto.id, imageDataUrl).catch(e => {
-            console.error("Failed to add photo", e);
-            alert("There was an error saving the photo. The storage might be full.");
+            setPhoto(projectId, newPhoto.id, url).catch(e => {
+                console.error("Failed to add photo", e);
+                alert("There was an error saving the photo. The storage might be full.");
+            });
         });
 
-        return prev.map(p => p.id === projectId ? { ...p, photos: [newPhoto, ...p.photos] } : p);
+        const updatedPhotos = [...newPhotos, ...project.photos];
+
+        return prev.map(p => p.id === projectId ? { ...p, photos: updatedPhotos } : p);
     });
   }, []);
 
