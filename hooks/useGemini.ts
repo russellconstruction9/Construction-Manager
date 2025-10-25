@@ -311,7 +311,7 @@ export const useGemini = () => {
         parts.unshift({ text: fullPrompt });
         
         try {
-            // FIX: The `sendMessage` method expects an object with a `message` property.
+            // FIX: The sendMessage method expects an object with a `message` property containing the parts array.
             let response: GenerateContentResponse = await chatSessionRef.current.sendMessage({ message: parts });
 
             while (response.functionCalls && response.functionCalls.length > 0) {
@@ -326,7 +326,7 @@ export const useGemini = () => {
                     };
                  });
 
-                // FIX: The `sendMessage` method expects an object with a `message` property.
+                // FIX: The sendMessage method expects an object with a `message` property.
                 response = await chatSessionRef.current.sendMessage({ message: functionResponseParts });
             }
             
