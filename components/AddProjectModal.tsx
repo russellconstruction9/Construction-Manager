@@ -1,9 +1,6 @@
-
-
 import React, { useState } from 'react';
 import Modal from './Modal';
 import Button from './Button';
-// FIX: Separated imports for useData and ProjectType to resolve module and type errors.
 import { useData } from '../hooks/useDataContext';
 import { ProjectType } from '../types';
 

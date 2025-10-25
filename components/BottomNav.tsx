@@ -1,12 +1,12 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Building2Icon, ClockIcon, LayoutDashboardIcon, ListChecksIcon, CalendarIcon } from './icons/Icons';
+import { Building2Icon, ClockIcon, LayoutDashboardIcon, ListChecksIcon, MapIcon } from './icons/Icons';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboardIcon },
   { path: '/projects', label: 'Projects', icon: Building2Icon },
   { path: '/tasks', label: 'Tasks', icon: ListChecksIcon },
-  { path: '/schedule', label: 'Schedule', icon: CalendarIcon },
+  { path: '/map', label: 'Map', icon: MapIcon },
   { path: '/time-tracking', label: 'Time', icon: ClockIcon },
 ];
 

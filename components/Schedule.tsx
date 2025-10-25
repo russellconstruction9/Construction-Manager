@@ -1,18 +1,19 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../hooks/useDataContext';
 import { Project, Task } from '../types';
-// FIX: Corrected date-fns imports to use subpaths for tree-shaking and to resolve module errors.
-import { format } from 'date-fns/format';
-import { startOfMonth } from 'date-fns/startOfMonth';
-import { endOfMonth } from 'date-fns/endOfMonth';
-import { startOfWeek } from 'date-fns/startOfWeek';
-import { endOfWeek } from 'date-fns/endOfWeek';
-import { eachDayOfInterval } from 'date-fns/eachDayOfInterval';
-import { isSameMonth } from 'date-fns/isSameMonth';
-import { isSameDay } from 'date-fns/isSameDay';
-import { addMonths } from 'date-fns/addMonths';
-import { subMonths } from 'date-fns/subMonths';
-import { isWithinInterval as isWithin } from 'date-fns/isWithinInterval';
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  eachDayOfInterval,
+  isSameMonth,
+  isSameDay,
+  addMonths,
+  subMonths,
+  isWithinInterval as isWithin,
+} from 'date-fns';
 import { ChevronLeftIcon, ChevronRightIcon } from './icons/Icons';
 import ProjectFilter from './ProjectFilter';
 import DayViewModal from './DayViewModal';

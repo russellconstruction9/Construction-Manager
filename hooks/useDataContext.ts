@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo } from 'react';
-import { Project, Task, User, TimeLog, TaskStatus, Location, PunchListItem, ProjectPhoto, InventoryItem, OrderListItem, InventoryOrderItem, ManualOrderItem } from '../types';
+import { Project, Task, User, TimeLog, TaskStatus, Location, PunchListItem, ProjectPhoto, InventoryItem, OrderListItem, InventoryOrderItem, ManualOrderItem, ProjectType } from '../types';
 import { setPhoto } from '../utils/db';
+import { addDays, subDays } from 'date-fns';
+
+const GOOGLE_MAPS_API_KEY = 'AIzaSyAyS8VmIL-AbFnpm_xmuKZ-XG8AmSA03AM'; // TODO: Move to environment variables
 
 // Helper function to revive dates from JSON strings
 const reviver = (key: string, value: any) => {
@@ -14,7 +17,11 @@ const reviver = (key: string, value: any) => {
 const getStoredItem = <T,>(key: string, defaultValue: T): T => {
     try {
         const item = window.localStorage.getItem(key);
-        return item ? JSON.parse(item, reviver) : defaultValue;
+        // If item doesn't exist, return the default value to populate the app
+        if (item === null) {
+            return defaultValue;
+        }
+        return JSON.parse(item, reviver);
     } catch (error) {
         console.error(`Error reading ${key} from localStorage`, error);
         return defaultValue;
@@ -24,7 +31,7 @@ const getStoredItem = <T,>(key: string, defaultValue: T): T => {
 // Fetches the map image and converts it to a Data URL to embed it directly.
 // This is more reliable for PDF generation as it avoids cross-origin issues.
 const getMapImageDataUrl = async (location: Location): Promise<string | undefined> => {
-    const url = `https://staticmap.openstreetmap.cz/staticmap.php?center=${location.lat},${location.lng}&zoom=15&size=200x150&maptype=mapnik&markers=${location.lat},${location.lng},red-pushpin`;
+    const url = `https://maps.googleapis.com/maps/api/staticmap?center=${location.lat},${location.lng}&zoom=15&size=200x150&markers=color:red%7C${location.lat},${location.lng}&key=${GOOGLE_MAPS_API_KEY}`;
     try {
         const response = await fetch(url);
         if (!response.ok) {
@@ -44,6 +51,107 @@ const getMapImageDataUrl = async (location: Location): Promise<string | undefine
         return undefined;
     }
 };
+
+// --- DEFAULT DATA FOR PRE-LOADING THE APP ---
+const defaultUsers: User[] = [
+  {
+    id: 1,
+    name: 'Ryan',
+    role: 'Installer',
+    avatarUrl: `data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2E5YTlhOSI+PHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMTguNjg1IDE5LjA5N0E5LjcyMyA5LjcyMyAwIDAwMjEuNzUgMTJjMC01LjM4NS00LjM2NS05Ljc1LTkuNzUtOS43NVMxLjI1IDYuNjE1IDEuMjUgMTJhOS43MjMgOS43MjMgMCAwMDMuMDY1IDcuMDk3QTkuNzE2IDkuNzE2IDAgMDAxMiAyMS43NWE5LjcxNiA5LjcxNiAwIDAwNi42ODUtMi42NTN6bS0xMi41NC0xLjI4NUE3LjQ4NiA3LjQ4NiAwIDAxMTIgMTVhNy40ODYgNy40ODYgMCAwMTUuODU1IDIuODEyQTguMjI0IDguMjI0IDAgMDExMiAyMC4yNWE4LjIyNCA4LjIyNCAwIDAxLTUuODU1LTIuNDM4ek0xNS43NSA5YTMuNzUgMy43NSAwIDExLTcuNSAwIDMuNzUgMy43NSAwIDAxNy41IDB6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIC8+PC9zdmc+`,
+    isClockedIn: false,
+    hourlyRate: 25,
+  }
+];
+
+const todayForDefaults = new Date();
+
+const defaultProjects: Project[] = [
+    {
+        id: 1,
+        name: 'Sally Wertman',
+        address: '23296 US 12 W, Sturgis, MI 49091',
+        type: ProjectType.Renovation,
+        status: 'In Progress',
+        startDate: subDays(todayForDefaults, 60),
+        endDate: addDays(todayForDefaults, 90),
+        budget: 150000,
+        currentSpend: 45000,
+        punchList: [
+            { id: 1, text: 'Fix front door lock', isComplete: false },
+            { id: 2, text: 'Paint trim in living room', isComplete: true },
+            { id: 3, text: 'Repair drywall patch in hallway', isComplete: false },
+        ],
+        photos: [],
+    },
+    {
+        id: 2,
+        name: 'Tony Szafranski',
+        address: '1370 E 720 S, Wolcottville, IN 46795',
+        type: ProjectType.NewConstruction,
+        status: 'In Progress',
+        startDate: subDays(todayForDefaults, 45),
+        endDate: addDays(todayForDefaults, 120),
+        budget: 320000,
+        currentSpend: 80000,
+        punchList: [
+             { id: 4, text: 'Install kitchen backsplash', isComplete: false },
+        ],
+        photos: [],
+    },
+    {
+        id: 3,
+        name: 'Joe Eicher',
+        address: '6430 S 125 E, Wolcottville, IN 46795',
+        type: ProjectType.InteriorFitOut,
+        status: 'On Hold',
+        startDate: subDays(todayForDefaults, 90),
+        endDate: addDays(todayForDefaults, 60),
+        budget: 75000,
+        currentSpend: 25000,
+        punchList: [],
+        photos: [],
+    },
+    {
+        id: 4,
+        name: 'Tyler Mitchell',
+        address: '785 E 660 S, Wolcottville, IN 46795',
+        type: ProjectType.NewConstruction,
+        status: 'In Progress',
+        startDate: subDays(todayForDefaults, 15),
+        endDate: addDays(todayForDefaults, 180),
+        budget: 450000,
+        currentSpend: 15000,
+        punchList: [],
+        photos: [],
+    },
+    {
+        id: 5,
+        name: 'Dennis Zmyslo',
+        address: '260 Spring Beach Rd, Rome City, IN 46784',
+        type: ProjectType.Renovation,
+        status: 'Completed',
+        startDate: subDays(todayForDefaults, 180),
+        endDate: subDays(todayForDefaults, 10),
+        budget: 95000,
+        currentSpend: 92500,
+        punchList: [],
+        photos: [],
+    },
+    {
+        id: 6,
+        name: 'Stephanie Webster',
+        address: '803 South Main Street, Topeka, IN 46571',
+        type: ProjectType.Demolition,
+        status: 'In Progress',
+        startDate: subDays(todayForDefaults, 5),
+        endDate: addDays(todayForDefaults, 25),
+        budget: 25000,
+        currentSpend: 5000,
+        punchList: [],
+        photos: [],
+    }
+];
 
 
 interface DataContextType {
@@ -77,8 +185,8 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [users, setUsers] = useState<User[]>(() => getStoredItem('scc_users', []));
-  const [projects, setProjects] = useState<Project[]>(() => getStoredItem('scc_projects', []));
+  const [users, setUsers] = useState<User[]>(() => getStoredItem('scc_users', defaultUsers));
+  const [projects, setProjects] = useState<Project[]>(() => getStoredItem('scc_projects', defaultProjects));
   const [tasks, setTasks] = useState<Task[]>(() => getStoredItem('scc_tasks', []));
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>(() => getStoredItem('scc_timeLogs', []));
   const [inventory, setInventory] = useState<InventoryItem[]>(() => getStoredItem('scc_inventory', []));
@@ -291,7 +399,25 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [currentUser, timeLogs, projects, getCurrentLocation]);
 
   const addPunchListItem = useCallback((projectId: number, text: string) => {
-    setProjects(prev => prev.map(p => p.id === projectId ? { ...p, punchList: [...p.punchList, { id: Math.max(0, ...p.punchList.map(item => item.id)) + 1, text, isComplete: false }] } : p));
+    setProjects(prevProjects => {
+        // Find the highest existing ID across all punch lists in all projects.
+        const allItems = prevProjects.flatMap(p => p.punchList);
+        const nextId = Math.max(0, ...allItems.map(item => item.id)) + 1;
+
+        // Create the new item with a globally unique ID.
+        const newItem: PunchListItem = {
+            id: nextId,
+            text,
+            isComplete: false,
+        };
+
+        // Update only the target project's punch list.
+        return prevProjects.map(p =>
+            p.id === projectId
+                ? { ...p, punchList: [...p.punchList, newItem] }
+                : p
+        );
+    });
   }, []);
 
   const togglePunchListItem = useCallback((projectId: number, itemId: number) => {

@@ -14,6 +14,7 @@ import ProjectPhotos from './components/ProjectPhotos';
 import Inventory from './components/Inventory';
 import Profile from './components/Profile';
 import Schedule from './components/Schedule';
+import MapView from './components/MapView';
 
 
 const App: React.FC = () => {
@@ -28,6 +29,7 @@ const App: React.FC = () => {
           <Route path="/projects/:projectId/tasks" element={<Tasks />} />
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/schedule" element={<Schedule />} />
+          <Route path="/map" element={<MapView />} />
           <Route path="/team" element={<Team />} />
           <Route path="/time-tracking" element={<TimeTracking />} />
           <Route path="/punch-lists" element={<PunchLists />} />

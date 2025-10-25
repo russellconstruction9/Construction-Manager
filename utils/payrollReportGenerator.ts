@@ -2,11 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { User, TimeLog, Project } from '../types';
 import PayrollReport from '../components/PayrollReport';
-// FIX: Corrected date-fns imports to use subpaths for tree-shaking and to resolve module errors.
-import { startOfWeek } from 'date-fns/startOfWeek';
-import { endOfWeek } from 'date-fns/endOfWeek';
-import { isWithinInterval } from 'date-fns/isWithinInterval';
-import { format } from 'date-fns/format';
+import { startOfWeek, endOfWeek, isWithinInterval, format } from 'date-fns';
 
 // Helper to dynamically load scripts and wait for them to be ready.
 const scriptPromises = new Map<string, Promise<void>>();
