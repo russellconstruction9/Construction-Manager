@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo } from 'react';
-import { Project, Task, User, TimeLog, TaskStatus, Location, PunchListItem, ProjectPhoto, InventoryItem, OrderListItem, InventoryOrderItem, ManualOrderItem, ProjectType } from '../types';
+import { Project, Task, User, TimeLog, TaskStatus, Location, PunchListItem, ProjectPhoto, InventoryItem, OrderListItem, InventoryOrderItem, ManualOrderItem, ProjectType, Invoice, Expense } from '../types';
 import { setPhoto } from '../utils/db';
 import { addDays, subDays } from 'date-fns';
 
@@ -76,7 +76,6 @@ const defaultProjects: Project[] = [
         startDate: subDays(todayForDefaults, 60),
         endDate: addDays(todayForDefaults, 90),
         budget: 150000,
-        currentSpend: 45000,
         punchList: [
             { id: 1, text: 'Fix front door lock', isComplete: false },
             { id: 2, text: 'Paint trim in living room', isComplete: true },
@@ -93,7 +92,6 @@ const defaultProjects: Project[] = [
         startDate: subDays(todayForDefaults, 45),
         endDate: addDays(todayForDefaults, 120),
         budget: 320000,
-        currentSpend: 80000,
         punchList: [
              { id: 4, text: 'Install kitchen backsplash', isComplete: false },
         ],
@@ -108,7 +106,6 @@ const defaultProjects: Project[] = [
         startDate: subDays(todayForDefaults, 90),
         endDate: addDays(todayForDefaults, 60),
         budget: 75000,
-        currentSpend: 25000,
         punchList: [],
         photos: [],
     },
@@ -121,7 +118,6 @@ const defaultProjects: Project[] = [
         startDate: subDays(todayForDefaults, 15),
         endDate: addDays(todayForDefaults, 180),
         budget: 450000,
-        currentSpend: 15000,
         punchList: [],
         photos: [],
     },
@@ -134,7 +130,6 @@ const defaultProjects: Project[] = [
         startDate: subDays(todayForDefaults, 180),
         endDate: subDays(todayForDefaults, 10),
         budget: 95000,
-        currentSpend: 92500,
         punchList: [],
         photos: [],
     },
@@ -147,7 +142,6 @@ const defaultProjects: Project[] = [
         startDate: subDays(todayForDefaults, 5),
         endDate: addDays(todayForDefaults, 25),
         budget: 25000,
-        currentSpend: 5000,
         punchList: [],
         photos: [],
     }
@@ -161,11 +155,13 @@ interface DataContextType {
   timeLogs: TimeLog[];
   inventory: InventoryItem[];
   orderList: OrderListItem[];
+  invoices: Invoice[];
+  expenses: Expense[];
   currentUser: User | null;
   setCurrentUser: (user: User | null) => void;
   addUser: (user: { name: string; role: string; hourlyRate: number; }) => void;
   updateUser: (userId: number, data: Partial<Omit<User, 'id' | 'isClockedIn' | 'clockInTime' | 'currentProjectId'>>) => void;
-  addProject: (project: Omit<Project, 'id' | 'currentSpend' | 'punchList' | 'photos'>) => void;
+  addProject: (project: Omit<Project, 'id' | 'punchList' | 'photos'>) => void;
   addTask: (task: Omit<Task, 'id' | 'status'>) => void;
   updateTaskStatus: (taskId: number, status: TaskStatus) => void;
   toggleClockInOut: (projectId?: number) => void;
@@ -177,9 +173,13 @@ interface DataContextType {
   updateInventoryItemQuantity: (itemId: number, newQuantity: number) => void;
   updateInventoryItem: (itemId: number, data: Partial<Omit<InventoryItem, 'id' | 'quantity'>>) => void;
   addToOrderList: (itemId: number) => void;
-  addManualItemToOrderList: (name: string) => void;
+  addManualItemToOrderList: (name: string, cost?: number) => void;
   removeFromOrderList: (item: OrderListItem) => void;
   clearOrderList: () => void;
+  addInvoice: (invoiceData: Omit<Invoice, 'id'>) => Invoice;
+  updateInvoice: (invoiceId: number, invoiceData: Omit<Invoice, 'id'>) => Invoice;
+  deleteInvoice: (invoiceId: number) => void;
+  addExpense: (expenseData: Omit<Expense, 'id'>) => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -191,6 +191,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>(() => getStoredItem('scc_timeLogs', []));
   const [inventory, setInventory] = useState<InventoryItem[]>(() => getStoredItem('scc_inventory', []));
   const [orderList, setOrderList] = useState<OrderListItem[]>(() => getStoredItem('scc_orderList', []));
+  const [invoices, setInvoices] = useState<Invoice[]>(() => getStoredItem('scc_invoices', []));
+  const [expenses, setExpenses] = useState<Expense[]>(() => getStoredItem('scc_expenses', []));
   const [currentUser, setCurrentUser] = useState<User | null>(() => getStoredItem('scc_currentUser', null));
 
   // Persist state to localStorage on changes
@@ -200,6 +202,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => { localStorage.setItem('scc_timeLogs', JSON.stringify(timeLogs)); }, [timeLogs]);
   useEffect(() => { localStorage.setItem('scc_inventory', JSON.stringify(inventory)); }, [inventory]);
   useEffect(() => { localStorage.setItem('scc_orderList', JSON.stringify(orderList)); }, [orderList]);
+  useEffect(() => { localStorage.setItem('scc_invoices', JSON.stringify(invoices)); }, [invoices]);
+  useEffect(() => { localStorage.setItem('scc_expenses', JSON.stringify(expenses)); }, [expenses]);
   useEffect(() => { localStorage.setItem('scc_currentUser', JSON.stringify(currentUser)); }, [currentUser]);
 
   useEffect(() => {
@@ -241,12 +245,11 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
   }, [currentUser]);
 
-  const addProject = useCallback((projectData: Omit<Project, 'id' | 'currentSpend' | 'punchList' | 'photos'>) => {
+  const addProject = useCallback((projectData: Omit<Project, 'id' | 'punchList' | 'photos'>) => {
     setProjects(prev => {
         const newProject: Project = {
             ...projectData,
             id: Math.max(0, ...prev.map(p => p.id)) + 1,
-            currentSpend: 0,
             punchList: [],
             photos: [],
         };
@@ -320,9 +323,6 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const updatedUser = { ...currentUser, isClockedIn: false, clockInTime: undefined, currentProjectId: undefined };
       setCurrentUser(updatedUser);
       setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
-
-      const clockedOutProjectId = timeLogs[existingLogIndex].projectId;
-      setProjects(prev => prev.map(p => p.id === clockedOutProjectId ? { ...p, currentSpend: p.currentSpend + cost } : p));
     } else {
       if (!projectId) return;
       const location = await getCurrentLocation();
@@ -343,7 +343,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setCurrentUser(updatedUser);
       setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
     }
-  }, [currentUser, timeLogs, projects, getCurrentLocation]);
+  }, [currentUser, timeLogs, getCurrentLocation]);
 
   const switchJob = useCallback(async (newProjectId: number) => {
     if (!currentUser || !currentUser.isClockedIn) return;
@@ -375,9 +375,6 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const tempTimeLogs = [...timeLogs];
     tempTimeLogs[existingLogIndex] = updatedLog;
 
-    const clockedOutProjectId = timeLogs[existingLogIndex].projectId;
-    const tempProjects = projects.map(p => p.id === clockedOutProjectId ? { ...p, currentSpend: p.currentSpend + cost } : p);
-
     // Step 2: Clock in to the new job immediately.
     const newLocation = await getCurrentLocation();
     const newMapImageUrl = newLocation ? await getMapImageDataUrl(newLocation) : undefined;
@@ -393,10 +390,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
     
     setTimeLogs([newLog, ...tempTimeLogs].sort((a, b) => b.clockIn.getTime() - a.clockIn.getTime()));
-    setProjects(tempProjects);
     setCurrentUser(updatedUser);
     setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
-  }, [currentUser, timeLogs, projects, getCurrentLocation]);
+  }, [currentUser, timeLogs, getCurrentLocation]);
 
   const addPunchListItem = useCallback((projectId: number, text: string) => {
     setProjects(prevProjects => {
@@ -482,11 +478,11 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
   }, []);
 
-  const addManualItemToOrderList = useCallback((name: string) => {
+  const addManualItemToOrderList = useCallback((name: string, cost?: number) => {
     setOrderList(prev => {
         const manualOrderItems = prev.filter(item => item.type === 'manual') as ManualOrderItem[];
         const newId = Math.max(0, ...manualOrderItems.map(i => i.id)) + 1;
-        const newItem: ManualOrderItem = { type: 'manual', id: newId, name };
+        const newItem: ManualOrderItem = { type: 'manual', id: newId, name, cost };
         return [...prev, newItem];
     });
   }, []);
@@ -508,19 +504,100 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setOrderList([]);
   }, []);
 
+  const addInvoice = useCallback((invoiceData: Omit<Invoice, 'id'>) => {
+    let newInvoice: Invoice | null = null;
+    setInvoices(prev => {
+        const nextId = Math.max(0, ...prev.map(i => i.id)) + 1;
+        newInvoice = {
+            ...invoiceData,
+            id: nextId,
+        };
+        return [...prev, newInvoice].sort((a, b) => b.dateIssued.getTime() - a.dateIssued.getTime());
+    });
+
+    const timeLogIdsToUpdate = invoiceData.lineItems.flatMap(item => item.timeLogIds || []);
+    if (timeLogIdsToUpdate.length > 0 && newInvoice) {
+        setTimeLogs(prev => prev.map(log => 
+            timeLogIdsToUpdate.includes(log.id) ? { ...log, invoiceId: newInvoice!.id } : log
+        ));
+    }
+    return newInvoice!;
+  }, []);
+
+  const updateInvoice = useCallback((invoiceId: number, invoiceData: Omit<Invoice, 'id'>) => {
+    let updatedInvoice: Invoice | null = null;
+    setTimeLogs(prevTimeLogs => {
+        const originalInvoice = invoices.find(inv => inv.id === invoiceId);
+        const originalTimeLogIds = originalInvoice?.lineItems.flatMap(item => item.timeLogIds || []) || [];
+        const newTimeLogIds = invoiceData.lineItems.flatMap(item => item.timeLogIds || []);
+
+        return prevTimeLogs.map(log => {
+            if (originalTimeLogIds.includes(log.id) && !newTimeLogIds.includes(log.id)) {
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { invoiceId, ...rest } = log;
+                return rest;
+            }
+            if (newTimeLogIds.includes(log.id)) {
+                return { ...log, invoiceId: invoiceId };
+            }
+            return log;
+        });
+    });
+
+    setInvoices(prev => {
+        return prev.map(inv => {
+            if (inv.id === invoiceId) {
+                updatedInvoice = { ...invoiceData, id: invoiceId };
+                return updatedInvoice;
+            }
+            return inv;
+        }).sort((a, b) => b.dateIssued.getTime() - a.dateIssued.getTime());
+    });
+    return updatedInvoice!;
+  }, [invoices]);
+
+  const deleteInvoice = useCallback((invoiceId: number) => {
+    const invoiceToDelete = invoices.find(inv => inv.id === invoiceId);
+    const timeLogIdsToUnbill = invoiceToDelete?.lineItems.flatMap(item => item.timeLogIds || []) || [];
+    
+    if (timeLogIdsToUnbill.length > 0) {
+        setTimeLogs(prev => prev.map(log => {
+            if (timeLogIdsToUnbill.includes(log.id)) {
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { invoiceId, ...rest } = log;
+                return rest;
+            }
+            return log;
+        }));
+    }
+
+    setInvoices(prev => prev.filter(inv => inv.id !== invoiceId));
+  }, [invoices]);
+
+  const addExpense = useCallback((expenseData: Omit<Expense, 'id'>) => {
+    setExpenses(prev => {
+        const newExpense: Expense = {
+            ...expenseData,
+            id: Math.max(0, ...prev.map(e => e.id)) + 1,
+        };
+        return [...prev, newExpense].sort((a, b) => b.date.getTime() - a.date.getTime());
+    });
+  }, []);
+
 
   const value = useMemo(() => ({ 
-      users, projects, tasks, timeLogs, inventory, orderList, currentUser, 
+      users, projects, tasks, timeLogs, inventory, orderList, currentUser, invoices, expenses,
       setCurrentUser, addUser, updateUser, addProject, addTask, updateTaskStatus, 
       toggleClockInOut, switchJob, addPunchListItem, togglePunchListItem, addPhoto, 
       addInventoryItem, updateInventoryItemQuantity, updateInventoryItem, addToOrderList, 
-      addManualItemToOrderList, removeFromOrderList, clearOrderList 
+      addManualItemToOrderList, removeFromOrderList, clearOrderList, 
+      addInvoice, updateInvoice, deleteInvoice, addExpense,
   }), [
-      users, projects, tasks, timeLogs, inventory, orderList, currentUser,
+      users, projects, tasks, timeLogs, inventory, orderList, currentUser, invoices, expenses,
       addUser, updateUser, addProject, addTask, updateTaskStatus, toggleClockInOut,
       switchJob, addPunchListItem, togglePunchListItem, addPhoto, addInventoryItem,
       updateInventoryItemQuantity, updateInventoryItem, addToOrderList, addManualItemToOrderList,
-      removeFromOrderList, clearOrderList
+      removeFromOrderList, clearOrderList, addInvoice, updateInvoice, deleteInvoice, addExpense
   ]);
 
   return React.createElement(DataContext.Provider, { value }, children);

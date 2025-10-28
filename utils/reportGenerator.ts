@@ -7,7 +7,7 @@ import ProjectReport from '../components/ProjectReport';
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 interface ReportData {
-    project: Project;
+    project: Project & { currentSpend: number }; // Require currentSpend to be passed in
     tasks: Task[];
     timeLogs: TimeLog[];
     photos: { id: number; url: string; description: string; dateAdded: Date; }[];

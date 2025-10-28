@@ -15,6 +15,9 @@ import Inventory from './components/Inventory';
 import Profile from './components/Profile';
 import Schedule from './components/Schedule';
 import MapView from './components/MapView';
+import Invoices from './components/Invoices';
+import InvoiceDetails from './components/InvoiceDetails';
+import InvoiceEditor from './components/InvoiceEditor';
 
 
 const App: React.FC = () => {
@@ -34,6 +37,10 @@ const App: React.FC = () => {
           <Route path="/time-tracking" element={<TimeTracking />} />
           <Route path="/punch-lists" element={<PunchLists />} />
           <Route path="/punch-lists/:projectId" element={<PunchListDetails />} />
+          <Route path="/invoicing" element={<Invoices />} />
+          <Route path="/invoices/new" element={<InvoiceEditor />} />
+          <Route path="/invoices/:invoiceId" element={<InvoiceDetails />} />
+          <Route path="/invoices/:invoiceId/edit" element={<InvoiceEditor />} />
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="*" element={<Navigate to="/" replace />} />
