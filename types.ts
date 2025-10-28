@@ -1,3 +1,5 @@
+import { GoogleGenAI, GenerateContentResponse, Chat as GeminiChat, FunctionDeclaration, Type } from '@google/genai';
+
 
 export enum TaskStatus {
   ToDo = 'To Do',
@@ -50,7 +52,6 @@ export interface Project {
   startDate: Date;
   endDate: Date;
   budget: number;
-  currentSpend: number;
   punchList: PunchListItem[];
   photos: ProjectPhoto[];
 }
@@ -77,6 +78,7 @@ export interface TimeLog {
   clockOutLocation?: Location;
   clockInMapImage?: string;
   clockOutMapImage?: string;
+  invoiceId?: number;
 }
 
 export interface InventoryItem {
@@ -84,6 +86,7 @@ export interface InventoryItem {
   name: string;
   quantity: number;
   unit: string;
+  cost?: number; // Cost per unit
   lowStockThreshold?: number;
 }
 
@@ -95,7 +98,8 @@ export interface InventoryOrderItem {
 export interface ManualOrderItem {
   type: 'manual';
   id: number;
-  name: string;
+  name:string;
+  cost?: number;
 }
 
 export type OrderListItem = InventoryOrderItem | ManualOrderItem;
@@ -105,4 +109,45 @@ export interface Chat {
   message: string;
   image?: string; // base64 encoded image
   toolResponse?: any;
+}
+
+// New Invoicing Types
+export interface InvoiceLineItem {
+  id: string; // Use a UUID-like string for client-side key
+  description: string;
+  quantity: number;
+  rate: number;
+  amount: number;
+  timeLogIds?: number[];
+}
+
+export enum InvoiceStatus {
+  Draft = 'Draft',
+  Sent = 'Sent',
+  Paid = 'Paid',
+  Overdue = 'Overdue',
+}
+
+export interface Invoice {
+  id: number;
+  invoiceNumber: string;
+  projectId: number;
+  dateIssued: Date;
+  dueDate: Date;
+  status: InvoiceStatus;
+  lineItems: InvoiceLineItem[];
+  notes?: string;
+  subtotal: number;
+  taxRate: number; // Store as percentage, e.g., 5 for 5%
+  taxAmount: number;
+  total: number;
+}
+
+export interface Expense {
+  id: number;
+  projectId: number;
+  description: string;
+  amount: number;
+  date: Date;
+  vendor?: string;
 }

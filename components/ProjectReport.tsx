@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { SccLogoIcon } from './icons/Icons';
 
 interface ReportData {
-    project: Project;
+    project: Project & { currentSpend: number };
     tasks: Task[];
     timeLogs: TimeLog[];
     photos: { id: number; url: string; description: string; dateAdded: Date; }[];
