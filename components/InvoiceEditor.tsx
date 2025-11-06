@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useData } from '../hooks/useDataContext';
 import { Invoice, InvoiceLineItem, InvoiceStatus, TimeLog } from '../types';
 import Card from './Card';
@@ -117,10 +117,10 @@ const InvoiceEditor: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            <Link to={isEditMode ? `/invoices/${invoiceId}` : "/invoicing"} className="inline-flex items-center text-sm font-medium text-gray-600 hover:text-gray-900">
+            <button onClick={() => navigate(-1)} className="inline-flex items-center text-sm font-medium text-gray-600 hover:text-gray-900">
                 <ChevronLeftIcon className="w-5 h-5 mr-2" />
-                Back to {isEditMode ? 'Invoice' : 'Invoices'}
-            </Link>
+                Back
+            </button>
             <h1 className="text-3xl font-bold text-gray-800">{isEditMode ? `Edit Invoice #${existingInvoice?.invoiceNumber}` : 'Create New Invoice'}</h1>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -11,7 +11,6 @@ import TimeTracking from './components/TimeTracking';
 import PunchLists from './components/PunchLists';
 import PunchListDetails from './components/PunchListDetails';
 import ProjectPhotos from './components/ProjectPhotos';
-import Inventory from './components/Inventory';
 import Profile from './components/Profile';
 import Schedule from './components/Schedule';
 import MapView from './components/MapView';
@@ -41,7 +40,6 @@ const App: React.FC = () => {
           <Route path="/invoices/new" element={<InvoiceEditor />} />
           <Route path="/invoices/:invoiceId" element={<InvoiceDetails />} />
           <Route path="/invoices/:invoiceId/edit" element={<InvoiceEditor />} />
-          <Route path="/inventory" element={<Inventory />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

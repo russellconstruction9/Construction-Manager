@@ -66,10 +66,10 @@ const InvoiceDetails: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            <Link to="/invoicing" className="inline-flex items-center text-sm font-medium text-gray-600 hover:text-gray-900">
+            <button onClick={() => navigate(-1)} className="inline-flex items-center text-sm font-medium text-gray-600 hover:text-gray-900">
                 <ChevronLeftIcon className="w-5 h-5 mr-2" />
-                Back to Invoices
-            </Link>
+                Back
+            </button>
 
             <Card>
                 <div className="flex flex-col sm:flex-row justify-between items-start gap-4">

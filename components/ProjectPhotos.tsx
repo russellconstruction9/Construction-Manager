@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useData } from '../hooks/useDataContext';
 import Card from './Card';
 import Button from './Button';
@@ -12,6 +12,7 @@ const ProjectPhotos: React.FC = () => {
     const { projectId } = useParams<{ projectId: string }>();
     const { projects } = useData();
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const navigate = useNavigate();
 
     const project = projects.find(p => p.id === Number(projectId));
 
@@ -30,10 +31,10 @@ const ProjectPhotos: React.FC = () => {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                 <div>
-                    <Link to={`/projects/${project.id}`} className="inline-flex items-center text-sm font-medium text-gray-600 hover:text-gray-900 mb-2">
+                    <button onClick={() => navigate(-1)} className="inline-flex items-center text-sm font-medium text-gray-600 hover:text-gray-900 mb-2">
                         <ChevronLeftIcon className="w-5 h-5 mr-2" />
-                        Back to Project Details
-                    </Link>
+                        Back
+                    </button>
                     <h1 className="text-3xl font-bold text-gray-800">Project Photos</h1>
                     <p className="text-gray-500 mt-1">For project: {project.name}</p>
                 </div>

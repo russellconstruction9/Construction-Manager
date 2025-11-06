@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import Card from './Card';
 import Button from './Button';
 import { useData } from '../hooks/useDataContext';
 import { format, formatDistanceStrict } from 'date-fns';
-import { Location } from '../types';
-import { SwitchIcon, DollarSignIcon } from './icons/Icons';
+import { Location, TimeLog } from '../types';
+import { SwitchIcon, DollarSignIcon, PlusIcon, PencilIcon, Trash2Icon, FileTextIcon } from './icons/Icons';
 import SwitchJobModal from './SwitchJobModal';
 import { generatePayrollReport } from '../utils/payrollReportGenerator';
+import TimeLogEditorModal from './TimeLogEditorModal';
 
 
 const MapImage: React.FC<{ location?: Location, imageUrl?: string }> = ({ location, imageUrl }) => {
@@ -37,11 +39,12 @@ const formatDuration = (ms: number): string => {
 
 
 const TimeTracking: React.FC = () => {
-    const { currentUser, timeLogs, projects, toggleClockInOut } = useData();
+    const { currentUser, timeLogs, projects, toggleClockInOut, deleteTimeLog } = useData();
     const [elapsedTime, setElapsedTime] = useState('0s');
     const [selectedProjectId, setSelectedProjectId] = useState<number | ''>('');
     const [isSwitchModalOpen, setIsSwitchModalOpen] = useState(false);
     const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+    const [editingLog, setEditingLog] = useState<TimeLog | 'new' | null>(null);
     
     useEffect(() => {
         let interval: number;
@@ -68,6 +71,12 @@ const TimeTracking: React.FC = () => {
         }
     };
 
+    const handleDelete = (logId: number) => {
+        if (window.confirm('Are you sure you want to delete this time log? This action cannot be undone.')) {
+            deleteTimeLog(logId);
+        }
+    };
+
 
     if (!currentUser) {
         return (
@@ -88,10 +97,16 @@ const TimeTracking: React.FC = () => {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Time Tracking for {currentUser.name}</h1>
-                 <Button onClick={handleGenerateReport} disabled={isGeneratingReport}>
-                    <DollarSignIcon className="w-5 h-5 mr-2 -ml-1" />
-                    {isGeneratingReport ? 'Generating...' : 'Generate Weekly Report'}
-                </Button>
+                 <div className="flex items-center gap-2">
+                    <Button onClick={() => setEditingLog('new')} variant="secondary">
+                        <PlusIcon className="w-5 h-5 mr-2 -ml-1" />
+                        Add Manual Entry
+                    </Button>
+                    <Button onClick={handleGenerateReport} disabled={isGeneratingReport}>
+                        <DollarSignIcon className="w-5 h-5 mr-2 -ml-1" />
+                        {isGeneratingReport ? 'Generating...' : 'Generate Weekly Report'}
+                    </Button>
+                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -125,14 +140,9 @@ const TimeTracking: React.FC = () => {
 
                         {currentUser.isClockedIn && currentUser.clockInTime && (
                             <div className="my-4">
-                                {activeProject && (
-                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center mb-4">
-                                        <p className="text-sm text-gray-500">Currently on:</p>
-                                        <p className="text-lg font-bold text-primary-navy">{activeProject.name}</p>
-                                    </div>
-                                )}
-                                <p className="text-4xl font-mono font-bold">{elapsedTime}</p>
-                                <p className="text-sm text-gray-500 mt-1">
+                                {activeProject && <p className="font-semibold text-gray-700">Project: {activeProject.name}</p>}
+                                <p className="text-4xl font-mono font-bold mt-2">{elapsedTime}</p>
+                                <p className="text-sm text-gray-500">
                                     Clocked in at {format(currentUser.clockInTime, 'p')}
                                 </p>
                                 <div className="mt-6 flex flex-col sm:flex-row gap-2">
@@ -167,9 +177,9 @@ const TimeTracking: React.FC = () => {
                                             <th scope="col" className="px-4 py-3">Project</th>
                                             <th scope="col" className="px-4 py-3">Duration</th>
                                             <th scope="col" className="px-4 py-3">Cost</th>
-                                            <th scope="col" className="px-4 py-3">Status</th>
                                             <th scope="col" className="px-4 py-3">In Map</th>
                                             <th scope="col" className="px-4 py-3">Out Map</th>
+                                            <th scope="col" className="px-4 py-3">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -180,20 +190,24 @@ const TimeTracking: React.FC = () => {
                                                     <td className="px-4 py-4 font-medium text-gray-900 whitespace-nowrap">{format(log.clockIn, 'MMM d, yyyy')}</td>
                                                     <td className="px-4 py-4 font-medium text-gray-900">{project?.name || 'N/A'}</td>
                                                     <td className="px-4 py-4">{log.durationMs ? formatDuration(log.durationMs) : '-'}</td>
-                                                    <td className="px-4 py-4 font-medium text-gray-800">{log.cost ? `$${log.cost.toFixed(2)}` : '-'}</td>
-                                                    <td className="px-4 py-4">
-                                                        {log.invoiceId ? (
-                                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                                Billed
-                                                            </span> 
-                                                        ) : (
-                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                                                Unbilled
-                                                            </span>
-                                                        )}
+                                                    <td className="px-4 py-4 font-medium text-gray-800">
+                                                        <div className="flex items-center gap-2">
+                                                            <span>{log.cost ? `$${log.cost.toFixed(2)}` : '-'}</span>
+                                                            {log.invoiceId && (
+                                                                <Link to={`/invoices/${log.invoiceId}`} title="View Invoice">
+                                                                    <FileTextIcon className="w-4 h-4 text-blue-600 hover:text-blue-800" />
+                                                                </Link>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                     <td className="px-4 py-4"><MapImage location={log.clockInLocation} imageUrl={log.clockInMapImage} /></td>
                                                     <td className="px-4 py-4"><MapImage location={log.clockOutLocation} imageUrl={log.clockOutMapImage} /></td>
+                                                    <td className="px-4 py-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <Button onClick={() => setEditingLog(log)} variant="secondary" className="!p-2" disabled={!!log.invoiceId} title={log.invoiceId ? 'Cannot edit a billed time log' : 'Edit log'}><PencilIcon className="w-4 h-4" /></Button>
+                                                            <Button onClick={() => handleDelete(log.id)} variant="destructive" className="!p-2" disabled={!!log.invoiceId} title={log.invoiceId ? 'Cannot delete a billed time log' : 'Delete log'}><Trash2Icon className="w-4 h-4" /></Button>
+                                                        </div>
+                                                    </td>
                                                 </tr>
                                             )
                                         })}
@@ -207,6 +221,14 @@ const TimeTracking: React.FC = () => {
                 </div>
             </div>
             <SwitchJobModal isOpen={isSwitchModalOpen} onClose={() => setIsSwitchModalOpen(false)} />
+            {editingLog && (
+                <TimeLogEditorModal 
+                    isOpen={!!editingLog}
+                    onClose={() => setEditingLog(null)}
+                    log={editingLog === 'new' ? null : editingLog}
+                    userId={currentUser.id}
+                />
+            )}
         </div>
     );
 };
