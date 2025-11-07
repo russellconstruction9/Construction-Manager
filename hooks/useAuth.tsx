@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
-import { supabase } from '../utils/supabase';
+import { supabase, isSupabaseConfigured } from '../utils/supabase';
 import { Tables } from '../utils/database.types';
 
 export type Profile = Tables<'profiles'>;
@@ -84,13 +84,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   useEffect(() => {
+    console.log('AuthProvider initializing...');
+    console.log('Supabase configured:', isSupabaseConfigured());
+    
+    // If Supabase isn't configured, set loading to false and show a message
+    if (!isSupabaseConfigured()) {
+      console.warn('Supabase not configured, skipping authentication');
+      setLoading(false);
+      return;
+    }
+
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.error('Error getting session:', error);
+        setLoading(false);
+        return;
+      }
+      
+      console.log('Initial session:', !!session);
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchUserData(session.user.id);
       }
+      setLoading(false);
+    }).catch(error => {
+      console.error('Error in getSession:', error);
       setLoading(false);
     });
 
@@ -98,6 +118,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, !!session);
       setSession(session);
       setUser(session?.user ?? null);
 

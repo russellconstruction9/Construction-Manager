@@ -3,7 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { DataProvider } from './hooks/useDataContext';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import ErrorBoundary from './components/ErrorBoundary';
-import { ToastProvider } from './components/Toast';
+import ToastProvider from './components/Toast';
 import Auth from './components/Auth';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
@@ -78,6 +78,13 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
   console.log('App component rendering...');
+  console.log('Environment variables:', {
+    SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
+    HAS_SUPABASE_KEY: !!import.meta.env.VITE_SUPABASE_ANON_KEY,
+    NODE_ENV: import.meta.env.MODE,
+    BASE_URL: import.meta.env.BASE_URL
+  });
+  
   return (
     <ErrorBoundary>
       <ToastProvider>
