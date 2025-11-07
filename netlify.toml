@@ -19,6 +19,14 @@
 
 [build.environment]
   NODE_VERSION = "18"
+  # Supabase Configuration
+  VITE_SUPABASE_URL = "https://lppghtrmdpsvpstocneq.supabase.co"
+  VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwcGdodHJtZHBzdnBzdG9jbmVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0NTM1OTAsImV4cCI6MjA3ODAyOTU5MH0.IOJhdFF0dn4Kz4LNL1tF8OT4fInTDb5JOwdUfgzuXn8"
+  # App Configuration  
+  VITE_APP_NAME = "ConstructTrack Pro"
+  VITE_APP_DESCRIPTION = "Professional Construction Management SaaS"
+  VITE_NODE_ENV = "production"
+  VITE_API_BASE_URL = "/api"
   # Configure secrets scanning to allow frontend environment variables
   SECRETS_SCAN_OMIT_KEYS = "VITE_APP_NAME,VITE_APP_DESCRIPTION,VITE_NODE_ENV,VITE_SUPABASE_URL,VITE_SUPABASE_ANON_KEY"
   SECRETS_SCAN_OMIT_PATHS = "dist/**,*.env.example,manifest.json,index.html,sw.js"
