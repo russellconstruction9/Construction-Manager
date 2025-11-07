@@ -6,6 +6,12 @@ import Card from './Card';
 
 const Auth: React.FC = () => {
   console.log('Auth component rendering...');
+  console.log('Supabase configuration check:', {
+    isConfigured: isSupabaseConfigured(),
+    url: import.meta.env.VITE_SUPABASE_URL,
+    hasKey: !!import.meta.env.VITE_SUPABASE_ANON_KEY
+  });
+  
   const { signIn, signUp, loading } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
@@ -16,6 +22,7 @@ const Auth: React.FC = () => {
 
   // Show configuration error if Supabase isn't set up
   if (!isSupabaseConfigured()) {
+    console.warn('Supabase not configured, showing configuration message');
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
@@ -25,16 +32,22 @@ const Auth: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Configuration Required</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Database Configuration Required</h3>
             <p className="text-sm text-gray-600 mb-4">
-              This application requires Supabase configuration to function properly. 
-              Please set the environment variables in your deployment platform.
+              This application requires a Supabase database to function properly. 
+              Please contact your administrator to set up the database configuration.
             </p>
             <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-md">
-              <strong>Required environment variables:</strong><br />
-              • VITE_SUPABASE_URL<br />
-              • VITE_SUPABASE_ANON_KEY
+              <strong>Environment Status:</strong><br />
+              • VITE_SUPABASE_URL: {import.meta.env.VITE_SUPABASE_URL || 'Not set'}<br />
+              • VITE_SUPABASE_ANON_KEY: {import.meta.env.VITE_SUPABASE_ANON_KEY ? 'Set' : 'Not set'}
             </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+            >
+              Refresh Page
+            </button>
           </div>
         </Card>
       </div>

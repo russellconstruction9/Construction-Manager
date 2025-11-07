@@ -1,4 +1,15 @@
 /* Basic CSS for the Construction Manager app */
+
+/* Debug styles to ensure CSS loads */
+html {
+  background: #f9fafb !important;
+}
+
+.loading-test {
+  color: red !important;
+  font-weight: bold !important;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;

@@ -7,6 +7,13 @@ import App from './App';
 import { HashRouter } from 'react-router-dom';
 
 console.log('index.tsx loading...');
+console.log('Environment check:', {
+  nodeEnv: import.meta.env.MODE,
+  dev: import.meta.env.DEV,
+  prod: import.meta.env.PROD,
+  supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
+  hasSupabaseKey: !!import.meta.env.VITE_SUPABASE_ANON_KEY
+});
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

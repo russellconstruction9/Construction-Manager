@@ -31,8 +31,16 @@
   SECRETS_SCAN_OMIT_KEYS = "VITE_APP_NAME,VITE_APP_DESCRIPTION,VITE_NODE_ENV,VITE_SUPABASE_URL,VITE_SUPABASE_ANON_KEY"
   SECRETS_SCAN_OMIT_PATHS = "dist/**,*.env.example,manifest.json,index.html,sw.js"
 
-# This is the main redirect rule for SPAs. It should be last.
+# This is the main redirect rule for SPAs using HashRouter. 
+# Since we're using HashRouter, we need to serve the main page for all routes
+# and let the client-side routing handle the rest.
 [[redirects]]
   from = "/*"
   to = "/index.html"
+  status = 200
+  
+# Handle API requests if they're needed for the backend
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
   status = 200
