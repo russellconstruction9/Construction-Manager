@@ -29,6 +29,36 @@ const AppContent: React.FC = () => {
   console.log('AppContent rendering...');
   
   try {
+    // Simple test without authentication first
+    if (window.location.search.includes('test=noauth')) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+          <div className="bg-white p-8 rounded-lg shadow-lg">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">🏗️ ConstructTrack Pro</h1>
+            <p className="text-gray-600 mb-4">No auth test - CSS and React working!</p>
+            <div className="text-sm text-gray-500 mb-4">
+              <p>Environment: {import.meta.env.MODE}</p>
+              <p>Supabase configured: {import.meta.env.VITE_SUPABASE_URL ? 'Yes' : 'No'}</p>
+            </div>
+            <div className="space-y-2">
+              <button 
+                onClick={() => window.location.href = window.location.pathname + '?test=auth'}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Test with Auth
+              </button>
+              <button 
+                onClick={() => window.location.href = window.location.pathname}
+                className="w-full px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+              >
+                Try Full App
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
     const { user, loading } = useAuth();
 
     console.log('Auth state:', { user: !!user, loading });
@@ -92,7 +122,7 @@ const AppContent: React.FC = () => {
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">Application Error</h3>
             <p className="text-sm text-gray-600 mb-4">
-              An error occurred while initializing the application. Please refresh the page and try again.
+              Error in AppContent: {error.message}
             </p>
             <button
               onClick={() => window.location.reload()}
@@ -109,27 +139,68 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
   console.log('App component rendering...');
-  console.log('Environment variables:', {
-    SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
-    HAS_SUPABASE_KEY: !!import.meta.env.VITE_SUPABASE_ANON_KEY,
-    NODE_ENV: import.meta.env.MODE,
-    BASE_URL: import.meta.env.BASE_URL
-  });
   
-  // Temporarily show environment test for debugging
-  if (import.meta.env.MODE === 'production' && window.location.search.includes('debug=env')) {
-    return <EnvTest />;
+  // Step-by-step debugging
+  try {
+    console.log('Environment variables:', {
+      SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
+      HAS_SUPABASE_KEY: !!import.meta.env.VITE_SUPABASE_ANON_KEY,
+      NODE_ENV: import.meta.env.MODE,
+      BASE_URL: import.meta.env.BASE_URL
+    });
+    
+    // For debugging, show a simple test first
+    if (window.location.search.includes('test=simple')) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+          <div className="bg-white p-8 rounded-lg shadow-lg">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">🏗️ ConstructTrack Pro</h1>
+            <p className="text-gray-600 mb-4">Simple test mode - React is working!</p>
+            <div className="text-sm text-gray-500">
+              <p>Environment: {import.meta.env.MODE}</p>
+              <p>Supabase URL: {import.meta.env.VITE_SUPABASE_URL || 'Not set'}</p>
+              <p>Time: {new Date().toLocaleString()}</p>
+            </div>
+            <button 
+              onClick={() => window.location.href = window.location.pathname}
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Try Full App
+            </button>
+          </div>
+        </div>
+      );
+    }
+    
+    // Try to render the full app
+    return (
+      <ErrorBoundary>
+        <ToastProvider>
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
+        </ToastProvider>
+      </ErrorBoundary>
+    );
+  } catch (error) {
+    console.error('Critical error in App component:', error);
+    return (
+      <div className="min-h-screen bg-red-50 flex items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-lg shadow-lg max-w-md">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">❌ App Error</h1>
+          <p className="text-gray-600 mb-4">
+            The application failed to initialize. Error: {error.message}
+          </p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            Reload Page
+          </button>
+        </div>
+      </div>
+    );
   }
-  
-  return (
-    <ErrorBoundary>
-      <ToastProvider>
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
-      </ToastProvider>
-    </ErrorBoundary>
-  );
 };
 
 export default App;

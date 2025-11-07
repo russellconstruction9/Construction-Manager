@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ConstructTrack Pro - Test</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+            padding: 20px;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>ConstructTrack Pro - Deployment Test</h1>
+        <div id="test-results"></div>
+        
+        <script>
+            const results = document.getElementById('test-results');
+            
+            function addResult(type, message) {
+                const div = document.createElement('div');
+                div.className = `status ${type}`;
+                div.textContent = message;
+                results.appendChild(div);
+            }
+            
+            try {
+                addResult('success', '✓ Basic HTML/CSS/JS working');
+                
+                // Test if the root element exists
+                const rootElement = document.getElementById('root');
+                if (rootElement) {
+                    addResult('success', '✓ Root element found in main page');
+                } else {
+                    addResult('warning', '⚠ Root element not found (this is normal for this test page)');
+                }
+                
+                // Test environment detection
+                const isProduction = window.location.hostname !== 'localhost';
+                addResult(isProduction ? 'warning' : 'success', 
+                         `Environment: ${isProduction ? 'Production' : 'Development'}`);
+                
+                // Test React availability (this will fail but that's expected)
+                try {
+                    if (typeof React !== 'undefined') {
+                        addResult('success', '✓ React loaded');
+                    } else {
+                        addResult('warning', 'React not loaded on this test page (expected)');
+                    }
+                } catch (e) {
+                    addResult('warning', 'React not available on test page (expected)');
+                }
+                
+                addResult('success', '✓ JavaScript execution successful');
+                
+            } catch (error) {
+                addResult('error', `JavaScript Error: ${error.message}`);
+            }
+        </script>
+    </div>
+    
+    <div class="test-container" style="margin-top: 20px;">
+        <h2>Quick Actions</h2>
+        <button onclick="window.location.href='/'">Go to Main App</button>
+        <button onclick="window.location.reload()">Reload Page</button>
+        <button onclick="console.log('Console test'); alert('Console and alerts working')">Test Console</button>
+    </div>
+</body>
+</html>
