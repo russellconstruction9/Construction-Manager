@@ -1,6 +1,10 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { DataProvider } from './hooks/useDataContext';
+import { AuthProvider, useAuth } from './hooks/useAuth';
+import ErrorBoundary from './components/ErrorBoundary';
+import { ToastProvider } from './components/Toast';
+import Auth from './components/Auth';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import Projects from './components/Projects';
@@ -17,9 +21,27 @@ import MapView from './components/MapView';
 import Invoices from './components/Invoices';
 import InvoiceDetails from './components/InvoiceDetails';
 import InvoiceEditor from './components/InvoiceEditor';
+import ProtectedRoute from './components/ProtectedRoute';
 
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Auth />;
+  }
+
   return (
     <DataProvider>
       <Layout>
@@ -45,6 +67,18 @@ const App: React.FC = () => {
         </Routes>
       </Layout>
     </DataProvider>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <ErrorBoundary>
+      <ToastProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </ToastProvider>
+    </ErrorBoundary>
   );
 };
 
