@@ -20,14 +20,16 @@ class Environment {
     this.config = {
       geminiApiKey: import.meta.env.VITE_GEMINI_API_KEY || '',
       googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
-      apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api',
+      apiBaseUrl: import.meta.env.VITE_API_BASE_URL || '/api',
       nodeEnv: import.meta.env.VITE_NODE_ENV || 'development',
       isDevelopment: import.meta.env.DEV,
       isProduction: import.meta.env.PROD,
     };
 
-    // Validate required environment variables
-    this.validate();
+    // Only validate in development - production can work without backend initially
+    if (this.config.isDevelopment) {
+      this.validate();
+    }
   }
 
   public static getInstance(): Environment {
@@ -40,6 +42,7 @@ class Environment {
   private validate(): void {
     const missingVars: string[] = [];
 
+    // Only warn about missing API keys, don't make them required
     if (!this.config.geminiApiKey) {
       missingVars.push('VITE_GEMINI_API_KEY');
     }
@@ -50,8 +53,8 @@ class Environment {
 
     if (missingVars.length > 0) {
       console.warn(
-        `Missing environment variables: ${missingVars.join(', ')}\n` +
-        'Please check your .env.local file. See .env.example for reference.'
+        `⚠️  Optional environment variables not configured: ${missingVars.join(', ')}\n` +
+        'Some features may be limited. Check .env.example for full configuration.'
       );
     }
   }
