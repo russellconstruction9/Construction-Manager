@@ -87,37 +87,76 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     console.log('AuthProvider initializing...');
     console.log('Supabase configured:', isSupabaseConfigured());
     
-    // If Supabase isn't configured, set loading to false and show a message
+    // If Supabase isn't configured, set loading to false immediately
     if (!isSupabaseConfigured()) {
       console.warn('Supabase not configured, skipping authentication');
       setLoading(false);
       return;
     }
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (error) {
-        console.error('Error getting session:', error);
+    let mounted = true;
+
+    const initializeAuth = async () => {
+      try {
+        console.log('Getting initial session...');
+        
+        // Create a timeout that sets loading to false even if session check hangs
+        const timeoutPromise = new Promise<{ timedOut: true }>((resolve) => {
+          setTimeout(() => {
+            console.warn('Session check timed out after 5 seconds');
+            resolve({ timedOut: true });
+          }, 5000);
+        });
+
+        // Race between actual session check and timeout
+        const result = await Promise.race([
+          supabase.auth.getSession().then(res => ({ ...res, timedOut: false })),
+          timeoutPromise
+        ]);
+
+        if (!mounted) return;
+
+        // If we timed out, just set loading to false and move on
+        if ('timedOut' in result && result.timedOut) {
+          console.warn('Using default auth state (timed out)');
+          setLoading(false);
+          return;
+        }
+
+        const { data, error } = result as any;
+        
+        if (error) {
+          console.error('Error getting session:', error);
+          setLoading(false);
+          return;
+        }
+        
+        const { session } = data || {};
+        console.log('Initial session:', !!session);
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          await fetchUserData(session.user.id);
+        }
+        
         setLoading(false);
-        return;
+      } catch (error) {
+        console.error('Error in getSession:', error);
+        if (mounted) {
+          console.log('Auth error, setting loading to false');
+          setLoading(false);
+        }
       }
-      
-      console.log('Initial session:', !!session);
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserData(session.user.id);
-      }
-      setLoading(false);
-    }).catch(error => {
-      console.error('Error in getSession:', error);
-      setLoading(false);
-    });
+    };
+
+    initializeAuth();
 
     // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
       console.log('Auth state changed:', event, !!session);
       setSession(session);
       setUser(session?.user ?? null);
@@ -132,7 +171,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signUp = async (email: string, password: string, metadata?: any) => {

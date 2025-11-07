@@ -1,13 +1,16 @@
 /* Basic CSS for the Construction Manager app */
 
+/* CRITICAL: Ensure HTML/body/root render */
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
 /* Debug styles to ensure CSS loads */
 html {
   background: #f9fafb !important;
-}
-
-.loading-test {
-  color: red !important;
-  font-weight: bold !important;
 }
 
 * {

@@ -24,9 +24,24 @@ export const supabase = createClient<Database>(
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
+      // Store auth tokens in localStorage for persistence across sessions
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+      storageKey: 'supabase.auth.token',
     },
   }
 );
+
+// Helper function to get proper redirect URL for auth callbacks
+export const getAuthRedirectUrl = (): string => {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+  if (import.meta.env.DEV) {
+    return 'http://localhost:5173/#/auth/callback';
+  }
+  // In production, use the current origin with hash routing
+  return `${window.location.origin}/#/auth/callback`;
+};
 
 // Export a function to check if Supabase is properly configured
 export const isSupabaseConfigured = (): boolean => {
