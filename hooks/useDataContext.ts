@@ -4,7 +4,7 @@ import { Project, Task, User, TimeLog, TaskStatus, Location, PunchListItem, Proj
 import { setPhoto, setPunchListPhoto, deletePunchListPhoto as deleteDbPunchListPhoto } from '../utils/db';
 import { addDays, subDays } from 'date-fns';
 
-const GOOGLE_MAPS_API_KEY = 'AIzaSyAyS8VmIL-AbFnpm_xmuKZ-XG8AmSA03AM'; // TODO: Move to environment variables
+// SECURITY: Use backend API for Maps functionality - no frontend API key needed
 
 // Helper function to revive dates from JSON strings
 const reviver = (key: string, value: any) => {
@@ -32,25 +32,42 @@ const getStoredItem = <T,>(key: string, defaultValue: T): T => {
 // Fetches the map image and converts it to a Data URL to embed it directly.
 // This is more reliable for PDF generation as it avoids cross-origin issues.
 const getMapImageDataUrl = async (location: Location): Promise<string | undefined> => {
-    const url = `https://maps.googleapis.com/maps/api/staticmap?center=${location.lat},${location.lng}&zoom=15&size=200x150&markers=color:red%7C${location.lat},${location.lng}&key=${GOOGLE_MAPS_API_KEY}`;
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            console.error(`Failed to fetch map image: ${response.statusText}`);
-            return undefined;
-        }
-        const blob = await response.blob();
-        
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-        });
-    } catch (error) {
-        console.error("Error fetching or converting map image:", error);
-        return undefined;
+  try {
+    // SECURITY: Use backend API endpoint for Maps functionality
+    const mapUrl = `/api/staticmap?lat=${location.lat}&lng=${location.lng}&zoom=15&size=200x150`;
+    const response = await fetch(mapUrl);
+    if (!response.ok) {
+      console.error(`Failed to fetch map image: ${response.statusText}`);
+      return undefined;
     }
+    const blob = await response.blob();
+    
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error("Error fetching or converting map image:", error);
+    return undefined;
+  }
+};
+
+const reverseGeocode = async (lat: number, lng: number): Promise<string> => {
+  try {
+    // SECURITY: Use backend API proxy for geolocation  
+    const apiUrl = `/api/geocode?lat=${lat}&lng=${lng}`;
+    const response = await fetch(apiUrl);
+    const data = await response.json();
+    if (data.status === 'OK' && data.results.length > 0) {
+      return data.results[0].formatted_address;
+    }
+    throw new Error('Geocoding failed');
+  } catch (error) {
+    console.error('Geocoding error:', error);
+    return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+  }
 };
 
 // --- DEFAULT DATA FOR PRE-LOADING THE APP ---

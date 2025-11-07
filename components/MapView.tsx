@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback, memo } from 'react';
 import { useData } from '../hooks/useDataContext';
 import Card from './Card';
-import { Project } from '../types';
+import { Project, Location } from '../types';
+
+// SECURITY: API key moved to backend - frontend uses proxy endpoints
 
 interface ProjectLocation {
     lat: number;
     lng: number;
 }
-
-const GOOGLE_MAPS_API_KEY = 'AIzaSyAyS8VmIL-AbFnpm_xmuKZ-XG8AmSA03AM'; // TODO: Move to environment variables
 
 const MapView: React.FC = () => {
     const { projects } = useData();
@@ -29,7 +29,8 @@ const MapView: React.FC = () => {
                 return geocodeCache[address];
             }
             try {
-                const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GOOGLE_MAPS_API_KEY}`);
+                // SECURITY: Use backend API proxy for geocoding
+                const response = await fetch(`/api/geocode?address=${encodeURIComponent(address)}`);
                 if (!response.ok) {
                     console.error(`Geocoding failed for ${address}: ${response.statusText}`);
                     const errorData = await response.json();
