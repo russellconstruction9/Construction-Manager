@@ -4,6 +4,9 @@
 
 [build.environment]
   NODE_VERSION = "18"
+  # Configure secrets scanning to allow frontend environment variables
+  SECRETS_SCAN_OMIT_KEYS = "VITE_APP_NAME,VITE_APP_DESCRIPTION,VITE_NODE_ENV,VITE_SUPABASE_URL,VITE_SUPABASE_ANON_KEY"
+  SECRETS_SCAN_OMIT_PATHS = "dist/**,*.env.example,manifest.json,index.html,sw.js"
 
 [[redirects]]
   from = "/*"
