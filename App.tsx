@@ -25,9 +25,13 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 
 const AppContent: React.FC = () => {
+  console.log('AppContent rendering...');
   const { user, loading } = useAuth();
 
+  console.log('Auth state:', { user: !!user, loading });
+
   if (loading) {
+    console.log('Showing loading screen');
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -39,9 +43,11 @@ const AppContent: React.FC = () => {
   }
 
   if (!user) {
+    console.log('No user, showing Auth component');
     return <Auth />;
   }
 
+  console.log('User authenticated, showing main app');
   return (
     <DataProvider>
       <Layout>
@@ -71,6 +77,7 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  console.log('App component rendering...');
   return (
     <ErrorBoundary>
       <ToastProvider>

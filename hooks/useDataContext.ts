@@ -178,6 +178,16 @@ interface DataContextType {
   addInvoice: (invoiceData: Omit<Invoice, 'id'>) => Invoice;
   updateInvoice: (invoiceId: number, data: Omit<Invoice, 'id'>) => Invoice;
   deleteInvoice: (invoiceId: number) => void;
+  // Inventory methods (stubs for now)
+  inventory: any[];
+  orderList: any[];
+  addInventoryItem: (item: any) => void;
+  updateInventoryItem: (id: any, data: any) => void;
+  updateInventoryItemQuantity: (id: any, quantity: any) => void;
+  addToOrderList: (item: any) => void;
+  removeFromOrderList: (id: any) => void;
+  clearOrderList: () => void;
+  addManualItemToOrderList: (item: any, cost?: any) => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -623,6 +633,16 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }));
   }, [invoices]);
 
+  // Stub inventory methods (to be implemented with Supabase)
+  const inventory: any[] = [];
+  const orderList: any[] = [];
+  const addInventoryItem = (item: any) => { console.log('addInventoryItem stub called', item); };
+  const updateInventoryItem = (id: any, data: any) => { console.log('updateInventoryItem stub called', id, data); };
+  const updateInventoryItemQuantity = (id: any, quantity: any) => { console.log('updateInventoryItemQuantity stub called', id, quantity); };
+  const addToOrderList = (item: any) => { console.log('addToOrderList stub called', item); };
+  const removeFromOrderList = (id: any) => { console.log('removeFromOrderList stub called', id); };
+  const clearOrderList = () => { console.log('clearOrderList stub called'); };
+  const addManualItemToOrderList = (item: any, cost?: any) => { console.log('addManualItemToOrderList stub called', item, cost); };
 
   const value = useMemo(() => ({ 
       users, projects, tasks, timeLogs, invoices, currentUser,
@@ -631,13 +651,17 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       addPunchListPhoto, updatePunchListAnnotation, deletePunchListPhoto,
       addManualTimeLog, updateTimeLog, deleteTimeLog,
       addInvoice, updateInvoice, deleteInvoice,
+      // Inventory stubs
+      inventory, orderList, addInventoryItem, updateInventoryItem, updateInventoryItemQuantity,
+      addToOrderList, removeFromOrderList, clearOrderList, addManualItemToOrderList,
   }), [
       users, projects, tasks, timeLogs, invoices, currentUser,
       addUser, updateUser, addProject, addTask, updateTaskStatus, toggleClockInOut,
       switchJob, addPunchListItem, togglePunchListItem, addPhoto,
       addPunchListPhoto, updatePunchListAnnotation, deletePunchListPhoto,
       addManualTimeLog, updateTimeLog, deleteTimeLog,
-      addInvoice, updateInvoice, deleteInvoice
+      addInvoice, updateInvoice, deleteInvoice,
+      // Inventory dependencies would go here
   ]);
 
   return React.createElement(DataContext.Provider, { value }, children);
