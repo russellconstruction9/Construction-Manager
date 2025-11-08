@@ -5,6 +5,8 @@ import App from './App';
 import { HashRouter } from 'react-router-dom';
 
 console.log('index.tsx loading...');
+console.log('=== DEBUG: index.tsx initialization started ===');
+
 const env = {
   nodeEnv: import.meta.env.MODE,
   dev: import.meta.env.DEV,
@@ -14,13 +16,25 @@ const env = {
 };
 console.log('Environment:', env);
 
+// Write to DOM immediately so we know if JS is running at all
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  rootElement.innerHTML = '<div style="color: red; padding: 20px; font-family: monospace; white-space: pre-wrap;">Loading... (JS executing)</div>';
+}
+
 // Global error handler for uncaught errors
 window.addEventListener('error', (event) => {
   console.error('Uncaught global error:', event.error);
+  if (rootElement) {
+    rootElement.innerHTML += '\n<div style="color: red;">Global Error: ' + (event.error?.message || 'unknown') + '</div>';
+  }
 });
 
 window.addEventListener('unhandledrejection', (event) => {
   console.error('Unhandled promise rejection:', event.reason);
+  if (rootElement) {
+    rootElement.innerHTML += '\n<div style="color: red;">Promise Rejection: ' + (event.reason?.message || JSON.stringify(event.reason)) + '</div>';
+  }
 });
 
 try {
