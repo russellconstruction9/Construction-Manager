@@ -1,20 +1,50 @@
-import React, { useState, useMemo } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useRef } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import { useData } from '../hooks/useDataContext';
 import Card from './Card';
 import Button from './Button';
 import { format } from 'date-fns';
-import { ChevronLeftIcon, CameraIcon, FileTextIcon, PlusIcon } from './icons/Icons';
+import { ChevronLeftIcon, CameraIcon, FileTextIcon, ScanLineIcon } from './icons/Icons';
 import PhotoItem from './PhotoItem';
 import { getPhotosForProject } from '../utils/db';
 import { generatePdfReport } from '../utils/reportGenerator';
-import { InvoiceStatus } from '../types';
+import { InvoiceStatus, Expense } from '../types';
+import ReceiptConfirmationModal from './ReceiptConfirmationModal';
+import { GoogleGenAI, Type } from '@google/genai';
+
+const getStatusColor = (status: InvoiceStatus) => {
+    switch (status) {
+        case InvoiceStatus.Paid: return 'bg-green-100 text-green-800';
+        case InvoiceStatus.Sent: return 'bg-blue-100 text-blue-800';
+        case InvoiceStatus.Overdue: return 'bg-red-100 text-red-800';
+        case InvoiceStatus.Draft:
+        default: return 'bg-gray-100 text-gray-800';
+    }
+};
+
+interface ExtractedReceiptData {
+    vendor: string;
+    total: number;
+    description: string;
+}
+
+const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(',')[1]); // return only base64 part
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
 
 const ProjectDetails: React.FC = () => {
     const { projectId } = useParams<{ projectId: string }>();
-    const { projects, tasks, users, timeLogs, invoices } = useData();
+    const { projects, tasks, users, timeLogs, invoices, expenses, addExpense } = useData();
     const [isGeneratingReport, setIsGeneratingReport] = useState(false);
-    const navigate = useNavigate();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isScanning, setIsScanning] = useState(false);
+    const [extractedData, setExtractedData] = useState<ExtractedReceiptData | null>(null);
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     
     const project = projects.find(p => p.id === Number(projectId));
 
@@ -23,8 +53,11 @@ const ProjectDetails: React.FC = () => {
         const laborCost = timeLogs
             .filter(log => log.projectId === project.id && log.cost)
             .reduce((sum, log) => sum + log.cost!, 0);
-        return laborCost;
-    }, [project, timeLogs]);
+        const expenseCost = expenses
+            .filter(exp => exp.projectId === project.id)
+            .reduce((sum, exp) => sum + exp.amount, 0);
+        return laborCost + expenseCost;
+    }, [project, timeLogs, expenses]);
     
     if (!project) {
         return (
@@ -61,8 +94,70 @@ const ProjectDetails: React.FC = () => {
         }
     };
     
+    const handleScanClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        setIsScanning(true);
+        try {
+            const base64Data = await fileToDataUrl(file);
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: {
+                    parts: [
+                        { text: "Analyze this receipt image and extract the vendor name, the final total amount as a number, and a brief description of the items purchased. Provide the output in the specified JSON format." },
+                        { inlineData: { mimeType: file.type, data: base64Data } }
+                    ]
+                },
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            vendor: { type: Type.STRING },
+                            total: { type: Type.NUMBER },
+                            description: { type: Type.STRING }
+                        },
+                        required: ["vendor", "total", "description"]
+                    }
+                }
+            });
+
+            const parsedData = JSON.parse(response.text);
+            setExtractedData(parsedData);
+            setIsConfirmModalOpen(true);
+
+        } catch (error) {
+            console.error("Error scanning receipt:", error);
+            alert("Sorry, there was an error analyzing the receipt. Please try again or enter the expense manually.");
+        } finally {
+            setIsScanning(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+    
+    const handleConfirmExpense = (data: { vendor: string, amount: number, description: string }) => {
+        addExpense({
+            projectId: project.id,
+            amount: data.amount,
+            vendor: data.vendor,
+            description: data.description,
+            date: new Date(),
+        });
+        setIsConfirmModalOpen(false);
+        setExtractedData(null);
+    };
+
+
     const projectTasks = useMemo(() => tasks.filter(task => task.projectId === project.id), [tasks, project.id]);
     const projectInvoices = useMemo(() => invoices.filter(inv => inv.projectId === project.id), [invoices, project.id]);
+    const projectExpenses = useMemo(() => expenses.filter(exp => exp.projectId === project.id), [expenses, project.id]);
     
     const taskProgress = useMemo(() => {
         const completedTasks = projectTasks.filter(task => task.status === 'Done').length;
@@ -77,11 +172,16 @@ const ProjectDetails: React.FC = () => {
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                <button onClick={() => navigate(-1)} className="inline-flex items-center text-sm font-medium text-gray-600 hover:text-gray-900">
+                <Link to="/projects" className="inline-flex items-center text-sm font-medium text-gray-600 hover:text-gray-900">
                     <ChevronLeftIcon className="w-5 h-5 mr-2" />
-                    Back
-                </button>
+                    Back to Projects
+                </Link>
                  <div className="flex items-center gap-2">
+                    <input type="file" accept="image/*" capture="environment" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+                    <Button onClick={handleScanClick} disabled={isScanning} variant="secondary">
+                        <ScanLineIcon className="w-5 h-5 mr-2 -ml-1" />
+                        {isScanning ? 'Scanning...' : 'Scan Receipt'}
+                    </Button>
                     <Button onClick={handleGenerateReport} disabled={isGeneratingReport}>
                         <FileTextIcon className="w-5 h-5 mr-2 -ml-1" />
                         {isGeneratingReport ? 'Generating...' : 'Generate Report'}
@@ -147,35 +247,24 @@ const ProjectDetails: React.FC = () => {
                             View All / Add Task
                         </Link>
                     </Card>
-
                     <Card>
-                        <h2 className="text-xl font-bold mb-4">Invoicing ({projectInvoices.length})</h2>
-                        {projectInvoices.length > 0 ? (
-                             <ul className="space-y-3">
-                                {projectInvoices.map(invoice => (
-                                    <Link to={`/invoices/${invoice.id}`} key={invoice.id}>
-                                        <li className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
-                                            <div>
-                                                <p className="font-bold text-blue-700">Invoice #{invoice.invoiceNumber}</p>
-                                                <p className="text-sm text-gray-500">Due: {format(invoice.dueDate, 'MMM d, yyyy')}</p>
-                                            </div>
-                                             <div className="text-right">
-                                                 <p className="font-semibold">${invoice.total.toFixed(2)}</p>
-                                                 <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${invoice.status === InvoiceStatus.Paid ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>{invoice.status}</span>
-                                             </div>
-                                        </li>
-                                    </Link>
+                        <h2 className="text-xl font-bold mb-4">Recent Expenses ({projectExpenses.length})</h2>
+                        {projectExpenses.length > 0 ? (
+                             <ul className="space-y-2">
+                                {projectExpenses.slice(0, 5).map(exp => (
+                                    <li key={exp.id} className="flex items-center justify-between text-sm p-2 bg-gray-50 rounded-md">
+                                        <div>
+                                            <p className="font-medium text-gray-700">{exp.vendor || exp.description}</p>
+                                            <p className="text-xs text-gray-500">{format(exp.date, 'MMM d, yyyy')}</p>
+                                        </div>
+                                        <span className="font-semibold text-gray-800">${exp.amount.toFixed(2)}</span>
+                                    </li>
                                 ))}
                             </ul>
                         ) : (
-                            <p className="text-gray-500">No invoices created for this project yet.</p>
+                             <p className="text-sm text-gray-500">No expenses logged for this project yet.</p>
                         )}
-                        <Button onClick={() => navigate('/invoices/new', { state: { defaultProjectId: project.id } })} className="mt-4 w-full">
-                            <PlusIcon className="w-5 h-5 mr-2 -ml-1" />
-                            Create New Invoice
-                        </Button>
                     </Card>
-
                 </div>
 
                 <div className="space-y-6">
@@ -209,6 +298,28 @@ const ProjectDetails: React.FC = () => {
                                 </div>
                             </div>
                         </div>
+                    </Card>
+
+                    <Card>
+                        <Link to={`/invoicing`} className="block">
+                            <h2 className="text-xl font-bold mb-4 hover:text-blue-600">Invoices ({projectInvoices.length})</h2>
+                        </Link>
+                         {projectInvoices.length > 0 ? (
+                            <ul className="space-y-2">
+                                {projectInvoices.slice(0, 3).map(inv => (
+                                    <li key={inv.id} className="flex items-center justify-between text-sm p-2 bg-gray-50 rounded-md">
+                                        <span className="font-medium text-gray-700">#{inv.invoiceNumber}</span>
+                                        <span className="font-semibold text-gray-800">${inv.total.toFixed(2)}</span>
+                                        <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${getStatusColor(inv.status)}`}>{inv.status}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p className="text-sm text-gray-500">No invoices for this project yet.</p>
+                        )}
+                        <Link to="/invoices/new" state={{ defaultProjectId: project.id }} className="mt-4 w-full block text-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700">
+                            Create Invoice
+                        </Link>
                     </Card>
 
                     <Card>
@@ -259,6 +370,15 @@ const ProjectDetails: React.FC = () => {
                     </Card>
                 </div>
             </div>
+             {isConfirmModalOpen && extractedData && (
+                <ReceiptConfirmationModal
+                    isOpen={isConfirmModalOpen}
+                    onClose={() => setIsConfirmModalOpen(false)}
+                    onConfirm={handleConfirmExpense}
+                    initialData={extractedData}
+                    isProcessing={false} 
+                />
+            )}
         </div>
     );
 };

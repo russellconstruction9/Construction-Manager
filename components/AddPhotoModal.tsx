@@ -23,7 +23,6 @@ const AddPhotoModal: React.FC<AddPhotoModalProps> = ({ isOpen, onClose, projectI
     const { addPhoto } = useData();
     const [description, setDescription] = useState('');
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-    const [isSaving, setIsSaving] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -47,27 +46,15 @@ const AddPhotoModal: React.FC<AddPhotoModalProps> = ({ isOpen, onClose, projectI
             return;
         }
         
-        setIsSaving(true);
-        try {
-            await addPhoto(projectId, imagePreviews, description);
-            
-            // Reset state and close
-            setDescription('');
-            setImagePreviews([]);
-            if (fileInputRef.current) {
-                fileInputRef.current.value = '';
-            }
-            onClose();
-        } catch (error) {
-            console.error("Error adding photos:", error);
-            if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-                 alert("Could not save photos. Your device storage is full. Please free up some space and try again.");
-            } else {
-                 alert("An error occurred while saving the photos. Please try again.");
-            }
-        } finally {
-            setIsSaving(false);
+        await addPhoto(projectId, imagePreviews, description);
+        
+        // Reset state and close
+        setDescription('');
+        setImagePreviews([]);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
         }
+        onClose();
     };
     
     const triggerFileInput = () => {
@@ -126,9 +113,7 @@ const AddPhotoModal: React.FC<AddPhotoModalProps> = ({ isOpen, onClose, projectI
                 </div>
                 <div className="flex justify-end space-x-3 pt-4">
                     <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
-                    <Button type="submit" disabled={isSaving || imagePreviews.length === 0 || !description}>
-                        {isSaving ? 'Saving...' : 'Add to Project'}
-                    </Button>
+                    <Button type="submit" disabled={imagePreviews.length === 0 || !description}>Add to Project</Button>
                 </div>
             </form>
         </Modal>

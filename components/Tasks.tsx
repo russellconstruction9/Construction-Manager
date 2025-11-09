@@ -7,7 +7,7 @@ import { PlusIcon, ChevronLeftIcon } from './icons/Icons';
 import { format } from 'date-fns';
 import AddTaskModal from './AddTaskModal';
 import EmptyState from './EmptyState';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 
 
 const TaskCard: React.FC<{ task: Task }> = React.memo(({ task }) => {
@@ -47,7 +47,6 @@ const Tasks: React.FC = () => {
     const { tasks, projects } = useData();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const { projectId } = useParams<{ projectId: string }>();
-    const navigate = useNavigate();
 
     const project = projectId ? projects.find(p => p.id === Number(projectId)) : null;
     
@@ -64,13 +63,13 @@ const Tasks: React.FC = () => {
             <div className="flex items-center justify-between">
                  <div>
                     {project && (
-                        <button onClick={() => navigate(-1)} className="inline-flex items-center text-sm font-medium text-gray-600 hover:text-gray-900 mb-1">
+                        <Link to={`/projects/${projectId}`} className="inline-flex items-center text-sm font-medium text-gray-600 hover:text-gray-900 mb-1">
                            <ChevronLeftIcon className="w-5 h-5 mr-2" />
-                           Back
-                        </button>
+                           Back to {project.name}
+                        </Link>
                     )}
                     <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
-                         {project ? `Tasks for ${project.name}` : 'All Tasks'}
+                         {project ? `Tasks` : 'All Tasks'}
                     </h1>
                 </div>
                 <Button onClick={() => setIsModalOpen(true)}>

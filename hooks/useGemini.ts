@@ -5,70 +5,6 @@ import { Chat, ProjectType, TaskStatus, User } from '../types';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-const initialSystemMessage: Chat = {
-  sender: 'model',
-  message: `Hello! I'm the AI Assistant for ConstructTrack Pro. I can help you manage projects, tasks, and more.
-<br/><br/>
-To assist the development team, I've prepared a comprehensive guide for building the backend and connecting it to this frontend application.
-<br/><br/>
-### **Backend Handoff & Integration Guide for ConstructTrack Pro**
----
-#### **1. Overview**
-This is a frontend-only application built with React. All data is currently mocked and managed within the \`useDataContext.ts\` hook, with persistence to the browser's \`localStorage\`. All images (for projects and punch lists) are stored in \`IndexedDB\`.
-The primary goal is to replace this mock data layer with a robust, scalable backend API, moving all business logic and data persistence to the server.
-<br/><br/>
----
-#### **2. Data Models & Database Schema**
-The database schema should be based on the interfaces defined in \`types.ts\`. Here are the core models and their relationships:
-- **\`User\`**: Represents a team member.
-  - \`id\`: Primary Key (e.g., \`SERIAL\` or \`UUID\`)
-  - \`name\`: \`string\`
-  - \`role\`: \`string\`
-  - \`avatarUrl\`: \`string\` (URL to a stored image)
-  - \`hourlyRate\`: \`decimal\`
-  - **Backend Addition:** \`password_hash\`: \`string\` (for authentication)
-- **\`Project\`**: Represents a construction project.
-  - Relationships: Has many Tasks, PunchListItems, ProjectPhotos, TimeLogs.
-- **\`Task\`**: Represents a task within a project.
-  - Relationships: Belongs to a Project, assigned to a User.
-- **\`TimeLog\`**: Records a work session.
-  - Relationships: Belongs to a User and a Project. Can optionally belong to an Invoice.
-  - Server-side logic must calculate \`durationMs\` and \`cost\` upon clock-out.
-- **\`PunchListItem\`**: An item on a project's to-do/fix list.
-  - Should store a URL to a cloud-stored image, not the image data itself.
-- **\`ProjectPhoto\`**: A photo log for a project.
-  - Should store a URL to a cloud-stored image.
-- **\`Invoice\` & \`InvoiceLineItem\`**:
-  - An Invoice belongs to a Project. A LineItem belongs to an Invoice.
-  - A many-to-many relationship is needed between LineItems and TimeLogs.
-<br/><br/>
----
-#### **3. Required API Endpoints (RESTful)**
-All endpoints must be authenticated.
-- **Auth**: \`POST /api/auth/login\`, \`GET /api/auth/me\`
-- **Projects**: Full CRUD at \`/api/projects\` and \`/api/projects/:id\`
-- **Tasks**: Full CRUD at \`/api/tasks\` and \`/api/tasks/:id\`
-- **Time Tracking**:
-  - \`POST /api/timelogs/clock-in\` (Body: \`{ projectId, lat, lng }\`)
-  - \`POST /api/timelogs/clock-out\` (Body: \`{ lat, lng }\`)
-  - \`POST /api/timelogs/switch\` (Body: \`{ newProjectId, lat, lng }\`)
-  - Full CRUD for manual logs at \`/api/timelogs/manual\`
-- **Photo Uploads (Multipart/form-data)**:
-  - \`POST /api/projects/:projectId/photos\`
-  - \`POST /api/projects/:projectId/punchlist/:itemId/photo\`
-<br/><br/>
----
-#### **4. Critical Logic & Security Migration**
-1.  **ID Generation**: All primary key generation (\`id\`) must move to the database.
-2.  **Calculations**: All financial (\`cost\`, invoice totals) and time (\`durationMs\`) calculations **must** be performed on the backend to ensure data integrity.
-3.  **Image Storage**: Replace \`IndexedDB\` with a cloud storage solution (S3, GCS). API endpoints should accept image files and return a URL.
-4.  **Gemini AI Assistant (SECURITY VULNERABILITY)**: The frontend **must not** call the Gemini API directly. Create a backend endpoint (\`POST /api/chat\`) that securely holds the API key and proxies requests to Gemini. This is critical to prevent key theft. The backend must also handle the function-calling logic by interacting with the database.
-5.  **Static Maps API**: The Google Maps API key must be used only on the backend. Create an endpoint (\`GET /api/maps/static?...\`) that fetches the map image on the server and streams it to the client.
-
-I am ready to assist with any questions you have about this implementation. Just ask!
-`
-};
-
 const functionDeclarations: FunctionDeclaration[] = [
     // Project Management
     {
@@ -178,14 +114,53 @@ const functionDeclarations: FunctionDeclaration[] = [
             required: ['projectName', 'itemText']
         }
     },
-    // Data Retrieval
+    // Inventory Management
     {
-        name: 'listData',
-        description: 'Retrieves a list of all projects, tasks, or users.',
+        name: 'addInventoryItem',
+        description: 'Adds a new item to the main inventory list.',
         parameters: {
             type: Type.OBJECT,
             properties: {
-                dataType: { type: Type.STRING, enum: ['projects', 'tasks', 'users'], description: "The type of data to list." }
+                name: { type: Type.STRING, description: 'The name of the inventory item.' },
+                quantity: { type: Type.NUMBER, description: 'The initial quantity of the item.' },
+                unit: { type: Type.STRING, description: 'The unit of measurement (e.g., pieces, bags, ft).' },
+                lowStockThreshold: { type: Type.NUMBER, description: 'Optional quantity at which to trigger a low stock warning.' },
+            },
+            required: ['name', 'quantity', 'unit']
+        }
+    },
+    {
+        name: 'updateInventoryItemQuantity',
+        description: 'Updates the quantity of an inventory item by a certain amount (can be positive or negative).',
+        parameters: {
+            type: Type.OBJECT,
+            properties: {
+                itemName: { type: Type.STRING, description: 'The name of the inventory item to update.' },
+                change: { type: Type.NUMBER, description: 'The amount to change the quantity by (e.g., 5 to add, -5 to remove).' },
+            },
+            required: ['itemName', 'change']
+        }
+    },
+    {
+        name: 'addToOrderList',
+        description: 'Adds an existing inventory item to the order list.',
+        parameters: {
+            type: Type.OBJECT, properties: { itemName: { type: Type.STRING, description: 'The name of the inventory item to add.' } }, required: ['itemName']
+        }
+    },
+    {
+        name: 'clearOrderList',
+        description: 'Removes all items from the order list.',
+        parameters: { type: Type.OBJECT, properties: {} }
+    },
+    // Data Retrieval
+    {
+        name: 'listData',
+        description: 'Retrieves a list of all projects, tasks, users, or inventory items.',
+        parameters: {
+            type: Type.OBJECT,
+            properties: {
+                dataType: { type: Type.STRING, enum: ['projects', 'tasks', 'users', 'inventory', 'order list'], description: "The type of data to list." }
             },
             required: ['dataType']
         }
@@ -193,7 +168,7 @@ const functionDeclarations: FunctionDeclaration[] = [
 ];
 
 export const useGemini = () => {
-    const [history, setHistory] = useState<Chat[]>([initialSystemMessage]);
+    const [history, setHistory] = useState<Chat[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const dataContext = useData();
     const chatSessionRef = useRef<GeminiChat | null>(null);
@@ -209,6 +184,7 @@ export const useGemini = () => {
     const findProjectByName = (name: string) => dataContext.projects.find(p => p.name.toLowerCase().includes(name.toLowerCase()));
     const findUserByName = (name: string) => dataContext.users.find(u => u.name.toLowerCase().includes(name.toLowerCase()));
     const findTaskByTitle = (title: string) => dataContext.tasks.find(t => t.title.toLowerCase().includes(title.toLowerCase()));
+    const findInventoryItemByName = (name: string) => dataContext.inventory.find(i => i.name.toLowerCase().includes(name.toLowerCase()));
 
     const functions = {
         addProject: ({ name, address, type, status, startDate, endDate, budget }: any) => {
@@ -267,6 +243,26 @@ export const useGemini = () => {
             dataContext.togglePunchListItem(project.id, item.id);
             return { success: true, message: `Punch list item "${itemText}" status has been toggled.` };
         },
+        addInventoryItem: ({ name, quantity, unit, lowStockThreshold }: any) => {
+            dataContext.addInventoryItem({ name, quantity, unit, lowStockThreshold });
+            return { success: true, message: `Added "${name}" to inventory.` };
+        },
+        updateInventoryItemQuantity: ({ itemName, change }: any) => {
+            const item = findInventoryItemByName(itemName);
+            if (!item) return { success: false, message: `Inventory item "${itemName}" not found.` };
+            dataContext.updateInventoryItemQuantity(item.id, item.quantity + change);
+            return { success: true, message: `Updated quantity for "${itemName}".` };
+        },
+        addToOrderList: ({ itemName }: any) => {
+            const item = findInventoryItemByName(itemName);
+            if (!item) return { success: false, message: `Inventory item "${itemName}" not found.` };
+            dataContext.addToOrderList(item.id);
+            return { success: true, message: `Added "${itemName}" to the order list.` };
+        },
+        clearOrderList: () => {
+            dataContext.clearOrderList();
+            return { success: true, message: 'The order list has been cleared.' };
+        },
         listData: ({ dataType }: { dataType: string }) => {
             let data: any[] = [];
             let fields: string[] = [];
@@ -276,11 +272,22 @@ export const useGemini = () => {
                 case 'projects': data = dataContext.projects; fields = ['name', 'status', 'type']; break;
                 case 'tasks': data = dataContext.tasks.map(t => ({...t, projectName: findProjectByName(t.projectId.toString())?.name, assigneeName: findUserByName(t.assigneeId.toString())?.name })); fields = ['title', 'status', 'projectName', 'assigneeName']; break;
                 case 'users': data = dataContext.users; fields = ['name', 'role', 'isClockedIn']; break;
+                case 'inventory': data = dataContext.inventory; fields = ['name', 'quantity', 'unit']; break;
+                case 'order list': 
+                    data = dataContext.orderList.map(o => {
+                        if (o.type === 'inventory') {
+                            const item = dataContext.inventory.find(i => i.id === o.itemId);
+                            return { name: item?.name || 'Unknown Item', type: 'Inventory' };
+                        }
+                        return { name: o.name, type: 'Manual' };
+                    });
+                    fields = ['name', 'type'];
+                    break;
             }
             if(data.length === 0) return { success: true, message: `There are no ${dataType}.`, data: [] };
             
-            const formattedData = data.map(item => "- " + fields.map(field => `${item[field]}`).join(' | ')).join('\\n');
-            return { success: true, message: `Here is the list of ${title}:\\n${formattedData}`, data };
+            const formattedData = data.map(item => "- " + fields.map(field => `${item[field]}`).join(' | ')).join('\n');
+            return { success: true, message: `Here is the list of ${title}:\n${formattedData}`, data };
         }
     };
 

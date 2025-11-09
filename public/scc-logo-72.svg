@@ -1,6 +1,0 @@
-<svg width="72" height="72" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">
-  <rect width="72" height="72" fill="#1E3A5F"/>
-  <path d="M36 18L18 25.5l18 7.5 18-7.5-18-7.5z" fill="#fff"/>
-  <path d="M18 43.5l18 7.5 18-7.5" stroke="#fff" stroke-width="2" fill="none"/>
-  <path d="M18 36l18 7.5 18-7.5" stroke="#fff" stroke-width="2" fill="none"/>
-</svg>

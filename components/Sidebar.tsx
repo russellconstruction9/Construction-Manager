@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Link } from 'react-router-dom';
-import { Building2Icon, ClipboardCheckIcon, ClockIcon, LayoutDashboardIcon, ListChecksIcon, UsersIcon, SccLogoIcon, CalendarIcon, MapIcon, FileTextIcon } from './icons/Icons';
+import { Building2Icon, ClipboardCheckIcon, ClockIcon, LayoutDashboardIcon, ListChecksIcon, UsersIcon, SccLogoIcon, PackageIcon, CalendarIcon, MapIcon, FileTextIcon } from './icons/Icons';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboardIcon },
@@ -12,6 +12,7 @@ const navItems = [
   { path: '/time-tracking', label: 'Time Tracking', icon: ClockIcon },
   { path: '/punch-lists', label: 'Punch Lists', icon: ClipboardCheckIcon },
   { path: '/invoicing', label: 'Invoicing', icon: FileTextIcon },
+  { path: '/inventory', label: 'Inventory', icon: PackageIcon },
 ];
 
 const Sidebar: React.FC = () => {

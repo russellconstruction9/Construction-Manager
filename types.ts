@@ -34,10 +34,6 @@ export interface PunchListItem {
   id: number;
   text: string;
   isComplete: boolean;
-  photo?: {
-    baseImageId: string; // Unique ID for the original image in IndexedDB
-    annotatedImageUrl: string; // Data URL for the marked-up image to display
-  };
 }
 
 export interface ProjectPhoto {
@@ -82,9 +78,31 @@ export interface TimeLog {
   clockOutLocation?: Location;
   clockInMapImage?: string;
   clockOutMapImage?: string;
-  notes?: string;
   invoiceId?: number;
 }
+
+export interface InventoryItem {
+  id: number;
+  name: string;
+  quantity: number;
+  unit: string;
+  cost?: number; // Cost per unit
+  lowStockThreshold?: number;
+}
+
+export interface InventoryOrderItem {
+  type: 'inventory';
+  itemId: number;
+}
+
+export interface ManualOrderItem {
+  type: 'manual';
+  id: number;
+  name:string;
+  cost?: number;
+}
+
+export type OrderListItem = InventoryOrderItem | ManualOrderItem;
 
 export interface Chat {
   sender: 'user' | 'model';
@@ -93,31 +111,21 @@ export interface Chat {
   toolResponse?: any;
 }
 
-// FIX: Added InventoryItem interface to resolve type errors in inventory components.
-export interface InventoryItem {
-  id: number;
-  name: string;
-  quantity: number;
-  unit: string;
-  cost?: number;
-  lowStockThreshold?: number;
-}
-
-// FIX: Added Invoice-related types to resolve type errors in invoicing components.
-export enum InvoiceStatus {
-  Draft = 'Draft',
-  Sent = 'Sent',
-  Paid = 'Paid',
-  Overdue = 'Overdue',
-}
-
+// New Invoicing Types
 export interface InvoiceLineItem {
-  id: string;
+  id: string; // Use a UUID-like string for client-side key
   description: string;
   quantity: number;
   rate: number;
   amount: number;
   timeLogIds?: number[];
+}
+
+export enum InvoiceStatus {
+  Draft = 'Draft',
+  Sent = 'Sent',
+  Paid = 'Paid',
+  Overdue = 'Overdue',
 }
 
 export interface Invoice {
@@ -130,7 +138,16 @@ export interface Invoice {
   lineItems: InvoiceLineItem[];
   notes?: string;
   subtotal: number;
-  taxRate: number;
+  taxRate: number; // Store as percentage, e.g., 5 for 5%
   taxAmount: number;
   total: number;
+}
+
+export interface Expense {
+  id: number;
+  projectId: number;
+  description: string;
+  amount: number;
+  date: Date;
+  vendor?: string;
 }

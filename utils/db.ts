@@ -1,6 +1,5 @@
 const DB_NAME = 'ConstructTrackProDB';
-const PROJECT_PHOTOS_STORE = 'photos';
-const PUNCHLIST_PHOTOS_STORE = 'punchlist_photos';
+const STORE_NAME = 'photos';
 let db: IDBDatabase | null = null;
 
 const initDB = (): Promise<IDBDatabase> => {
@@ -8,7 +7,7 @@ const initDB = (): Promise<IDBDatabase> => {
     // If db is already initialized, resolve it
     if (db) return resolve(db);
 
-    const request = indexedDB.open(DB_NAME, 2); // Version 2 for new store
+    const request = indexedDB.open(DB_NAME, 1);
 
     request.onerror = () => {
       console.error('Database error:', request.error);
@@ -22,11 +21,8 @@ const initDB = (): Promise<IDBDatabase> => {
 
     request.onupgradeneeded = (event) => {
       const dbInstance = (event.target as IDBOpenDBRequest).result;
-      if (!dbInstance.objectStoreNames.contains(PROJECT_PHOTOS_STORE)) {
-        dbInstance.createObjectStore(PROJECT_PHOTOS_STORE);
-      }
-      if (!dbInstance.objectStoreNames.contains(PUNCHLIST_PHOTOS_STORE)) {
-        dbInstance.createObjectStore(PUNCHLIST_PHOTOS_STORE);
+      if (!dbInstance.objectStoreNames.contains(STORE_NAME)) {
+        dbInstance.createObjectStore(STORE_NAME);
       }
     };
   });
@@ -37,14 +33,12 @@ const getDB = async (): Promise<IDBDatabase> => {
     return await initDB();
 }
 
-// --- Project Photos ---
-
 export const setPhoto = (projectId: number, photoId: number, imageDataUrl: string): Promise<void> => {
     return new Promise(async (resolve, reject) => {
         try {
             const db = await getDB();
-            const transaction = db.transaction([PROJECT_PHOTOS_STORE], 'readwrite');
-            const store = transaction.objectStore(PROJECT_PHOTOS_STORE);
+            const transaction = db.transaction([STORE_NAME], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
             const request = store.put(imageDataUrl, `${projectId}-${photoId}`);
 
             request.onsuccess = () => resolve();
@@ -62,8 +56,8 @@ export const getPhoto = (projectId: number, photoId: number): Promise<string | n
     return new Promise(async (resolve, reject) => {
         try {
             const db = await getDB();
-            const transaction = db.transaction([PROJECT_PHOTOS_STORE], 'readonly');
-            const store = transaction.objectStore(PROJECT_PHOTOS_STORE);
+            const transaction = db.transaction([STORE_NAME], 'readonly');
+            const store = transaction.objectStore(STORE_NAME);
             const request = store.get(`${projectId}-${photoId}`);
 
             request.onsuccess = () => {
@@ -86,8 +80,8 @@ export const getPhotosForProject = (
     return new Promise(async (resolve, reject) => {
         try {
             const db = await getDB();
-            const transaction = db.transaction([PROJECT_PHOTOS_STORE], 'readonly');
-            const store = transaction.objectStore(PROJECT_PHOTOS_STORE);
+            const transaction = db.transaction([STORE_NAME], 'readonly');
+            const store = transaction.objectStore(STORE_NAME);
             const photoPromises = photoMetas.map(meta => {
                 return new Promise((resolvePhoto, rejectPhoto) => {
                     const request = store.get(`${projectId}-${meta.id}`);
@@ -95,6 +89,7 @@ export const getPhotosForProject = (
                         if (request.result) {
                             resolvePhoto({ ...meta, url: request.result });
                         } else {
+                            // Resolve with null if a specific photo is not found
                             resolvePhoto(null); 
                         }
                     };
@@ -106,69 +101,9 @@ export const getPhotosForProject = (
             });
             
             const photos = await Promise.all(photoPromises);
+            // Filter out any null results where a photo might have been missing from DB
             resolve(photos.filter(p => p !== null) as { id: number; url: string; description: string; dateAdded: Date; }[]);
 
-        } catch (error) {
-            reject(error);
-        }
-    });
-};
-
-// --- Punch List Photos ---
-
-export const setPunchListPhoto = (photoId: string, imageDataUrl: string): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const db = await getDB();
-            const transaction = db.transaction([PUNCHLIST_PHOTOS_STORE], 'readwrite');
-            const store = transaction.objectStore(PUNCHLIST_PHOTOS_STORE);
-            const request = store.put(imageDataUrl, photoId);
-
-            request.onsuccess = () => resolve();
-            request.onerror = () => {
-                console.error('Error saving punch list photo:', request.error);
-                reject(request.error);
-            };
-        } catch (error) {
-            reject(error);
-        }
-    });
-};
-
-export const getPunchListPhoto = (photoId: string): Promise<string | null> => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const db = await getDB();
-            const transaction = db.transaction([PUNCHLIST_PHOTOS_STORE], 'readonly');
-            const store = transaction.objectStore(PUNCHLIST_PHOTOS_STORE);
-            const request = store.get(photoId);
-
-            request.onsuccess = () => {
-                resolve(request.result ? request.result : null);
-            };
-            request.onerror = () => {
-                console.error('Error getting punch list photo:', request.error);
-                reject(request.error);
-            };
-        } catch (error) {
-            reject(error);
-        }
-    });
-};
-
-export const deletePunchListPhoto = (photoId: string): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const db = await getDB();
-            const transaction = db.transaction([PUNCHLIST_PHOTOS_STORE], 'readwrite');
-            const store = transaction.objectStore(PUNCHLIST_PHOTOS_STORE);
-            const request = store.delete(photoId);
-
-            request.onsuccess = () => resolve();
-            request.onerror = () => {
-                console.error('Error deleting punch list photo:', request.error);
-                reject(request.error);
-            };
         } catch (error) {
             reject(error);
         }
