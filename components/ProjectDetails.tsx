@@ -105,7 +105,7 @@ const ProjectDetails: React.FC = () => {
         setIsScanning(true);
         try {
             const base64Data = await fileToDataUrl(file);
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || 'temp-placeholder' });
             
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',

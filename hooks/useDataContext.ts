@@ -19,11 +19,21 @@ const getStoredItem = <T,>(key: string, defaultValue: T): T => {
         const item = window.localStorage.getItem(key);
         // If item doesn't exist, return the default value to populate the app
         if (item === null) {
+            console.log(`No stored data found for ${key}, using defaults`);
             return defaultValue;
         }
-        return JSON.parse(item, reviver);
+        const parsed = JSON.parse(item, reviver);
+        console.log(`Successfully loaded ${key} from localStorage`);
+        return parsed;
     } catch (error) {
-        console.error(`Error reading ${key} from localStorage`, error);
+        console.error(`Error reading ${key} from localStorage:`, error);
+        console.log(`Falling back to default value for ${key}`);
+        // Clear the corrupted data
+        try {
+            window.localStorage.removeItem(key);
+        } catch (clearError) {
+            console.error(`Failed to clear corrupted data for ${key}:`, clearError);
+        }
         return defaultValue;
     }
 };
@@ -185,6 +195,8 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  console.log('DataProvider initializing...');
+  
   const [users, setUsers] = useState<User[]>(() => getStoredItem('scc_users', defaultUsers));
   const [projects, setProjects] = useState<Project[]>(() => getStoredItem('scc_projects', defaultProjects));
   const [tasks, setTasks] = useState<Task[]>(() => getStoredItem('scc_tasks', []));
@@ -195,16 +207,70 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [expenses, setExpenses] = useState<Expense[]>(() => getStoredItem('scc_expenses', []));
   const [currentUser, setCurrentUser] = useState<User | null>(() => getStoredItem('scc_currentUser', null));
 
-  // Persist state to localStorage on changes
-  useEffect(() => { localStorage.setItem('scc_users', JSON.stringify(users)); }, [users]);
-  useEffect(() => { localStorage.setItem('scc_projects', JSON.stringify(projects)); }, [projects]);
-  useEffect(() => { localStorage.setItem('scc_tasks', JSON.stringify(tasks)); }, [tasks]);
-  useEffect(() => { localStorage.setItem('scc_timeLogs', JSON.stringify(timeLogs)); }, [timeLogs]);
-  useEffect(() => { localStorage.setItem('scc_inventory', JSON.stringify(inventory)); }, [inventory]);
-  useEffect(() => { localStorage.setItem('scc_orderList', JSON.stringify(orderList)); }, [orderList]);
-  useEffect(() => { localStorage.setItem('scc_invoices', JSON.stringify(invoices)); }, [invoices]);
-  useEffect(() => { localStorage.setItem('scc_expenses', JSON.stringify(expenses)); }, [expenses]);
-  useEffect(() => { localStorage.setItem('scc_currentUser', JSON.stringify(currentUser)); }, [currentUser]);
+  // Persist state to localStorage on changes with error handling
+  useEffect(() => { 
+    try { 
+      localStorage.setItem('scc_users', JSON.stringify(users)); 
+    } catch (error) { 
+      console.error('Failed to save users to localStorage:', error);
+    }
+  }, [users]);
+  useEffect(() => { 
+    try { 
+      localStorage.setItem('scc_projects', JSON.stringify(projects)); 
+    } catch (error) { 
+      console.error('Failed to save projects to localStorage:', error);
+    }
+  }, [projects]);
+  useEffect(() => { 
+    try { 
+      localStorage.setItem('scc_tasks', JSON.stringify(tasks)); 
+    } catch (error) { 
+      console.error('Failed to save tasks to localStorage:', error);
+    }
+  }, [tasks]);
+  useEffect(() => { 
+    try { 
+      localStorage.setItem('scc_timeLogs', JSON.stringify(timeLogs)); 
+    } catch (error) { 
+      console.error('Failed to save timeLogs to localStorage:', error);
+    }
+  }, [timeLogs]);
+  useEffect(() => { 
+    try { 
+      localStorage.setItem('scc_inventory', JSON.stringify(inventory)); 
+    } catch (error) { 
+      console.error('Failed to save inventory to localStorage:', error);
+    }
+  }, [inventory]);
+  useEffect(() => { 
+    try { 
+      localStorage.setItem('scc_orderList', JSON.stringify(orderList)); 
+    } catch (error) { 
+      console.error('Failed to save orderList to localStorage:', error);
+    }
+  }, [orderList]);
+  useEffect(() => { 
+    try { 
+      localStorage.setItem('scc_invoices', JSON.stringify(invoices)); 
+    } catch (error) { 
+      console.error('Failed to save invoices to localStorage:', error);
+    }
+  }, [invoices]);
+  useEffect(() => { 
+    try { 
+      localStorage.setItem('scc_expenses', JSON.stringify(expenses)); 
+    } catch (error) { 
+      console.error('Failed to save expenses to localStorage:', error);
+    }
+  }, [expenses]);
+  useEffect(() => { 
+    try { 
+      localStorage.setItem('scc_currentUser', JSON.stringify(currentUser)); 
+    } catch (error) { 
+      console.error('Failed to save currentUser to localStorage:', error);
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     if (users.length > 0 && !currentUser) {
@@ -279,12 +345,49 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             resolve(undefined);
             return;
            }
+
+          const timeoutId = setTimeout(() => {
+            console.warn("Geolocation request timed out");
+            resolve(undefined);
+          }, 10000); // 10 second timeout
+
           navigator.geolocation.getCurrentPosition(
-              (position) => resolve({ lat: position.coords.latitude, lng: position.coords.longitude }),
+              (position) => {
+                clearTimeout(timeoutId);
+                console.log("Location obtained successfully");
+                resolve({ lat: position.coords.latitude, lng: position.coords.longitude });
+              },
               (error) => {
+                clearTimeout(timeoutId);
                 console.error("Error getting location:", error);
-                alert(`Could not get location: ${error.message}`);
+                
+                let errorMessage = "Could not get location: ";
+                switch (error.code) {
+                  case error.PERMISSION_DENIED:
+                    errorMessage += "Location access denied by user.";
+                    break;
+                  case error.POSITION_UNAVAILABLE:
+                    errorMessage += "Location information unavailable.";
+                    break;
+                  case error.TIMEOUT:
+                    errorMessage += "Location request timed out.";
+                    break;
+                  default:
+                    errorMessage += "Unknown location error.";
+                    break;
+                }
+                
+                console.warn(errorMessage);
+                // Don't show alert in production, just log the error
+                if (process.env.NODE_ENV === 'development') {
+                  alert(errorMessage);
+                }
                 resolve(undefined);
+              },
+              {
+                enableHighAccuracy: true,
+                timeout: 8000,
+                maximumAge: 300000 // 5 minutes
               }
           );
       });
@@ -421,34 +524,45 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const addPhoto = useCallback(async (projectId: number, imageDataUrls: string[], description: string) => {
-    setProjects(prev => {
-        const project = prev.find(p => p.id === projectId);
-        if (!project) return prev;
-    
-        const dateAdded = new Date();
-        let nextId = Math.max(0, ...project.photos.map(p => p.id)) + 1;
+    try {
+        setProjects(prev => {
+            const project = prev.find(p => p.id === projectId);
+            if (!project) {
+                console.error(`Project with id ${projectId} not found`);
+                return prev;
+            }
         
-        const newPhotos: Omit<ProjectPhoto, 'imageDataUrl'>[] = [];
+            const dateAdded = new Date();
+            let nextId = Math.max(0, ...project.photos.map(p => p.id)) + 1;
+            
+            const newPhotos: Omit<ProjectPhoto, 'imageDataUrl'>[] = [];
+            
+            imageDataUrls.forEach((url, index) => {
+                const photoId = nextId++;
+                const newPhoto: Omit<ProjectPhoto, 'imageDataUrl'> = {
+                  id: photoId,
+                  description: `${description}${imageDataUrls.length > 1 ? ` (${index + 1}/${imageDataUrls.length})` : ''}`,
+                  dateAdded, // same timestamp for the batch
+                };
+                newPhotos.push(newPhoto);
         
-        imageDataUrls.forEach((url) => {
-            const photoId = nextId++;
-            const newPhoto: Omit<ProjectPhoto, 'imageDataUrl'> = {
-              id: photoId,
-              description,
-              dateAdded, // same timestamp for the batch
-            };
-            newPhotos.push(newPhoto);
-    
-            setPhoto(projectId, newPhoto.id, url).catch(e => {
-                console.error("Failed to add photo", e);
-                alert("There was an error saving the photo. The storage might be full.");
+                setPhoto(projectId, newPhoto.id, url).catch(e => {
+                    console.error(`Failed to add photo ${photoId}:`, e);
+                    // Don't show alert in production
+                    if (process.env.NODE_ENV === 'development') {
+                        alert(`There was an error saving photo ${index + 1}. The storage might be full.`);
+                    }
+                });
             });
+
+            const updatedPhotos = [...newPhotos, ...project.photos];
+
+            return prev.map(p => p.id === projectId ? { ...p, photos: updatedPhotos } : p);
         });
-
-        const updatedPhotos = [...newPhotos, ...project.photos];
-
-        return prev.map(p => p.id === projectId ? { ...p, photos: updatedPhotos } : p);
-    });
+    } catch (error) {
+        console.error('Error adding photos:', error);
+        // Handle error gracefully - maybe show a toast notification
+    }
   }, []);
 
   const addInventoryItem = useCallback((itemData: Omit<InventoryItem, 'id'>) => {

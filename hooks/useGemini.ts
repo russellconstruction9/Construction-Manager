@@ -3,7 +3,9 @@ import { GoogleGenAI, FunctionDeclaration, Type, GenerateContentResponse, Chat a
 import { useData } from './useDataContext';
 import { Chat, ProjectType, TaskStatus, User } from '../types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Temporary fallback for missing API key
+const apiKey = process.env.API_KEY || 'temp-key-placeholder';
+const ai = new GoogleGenAI({ apiKey });
 
 const functionDeclarations: FunctionDeclaration[] = [
     // Project Management
@@ -175,10 +177,19 @@ export const useGemini = () => {
 
     // Initialize chat session once
     useEffect(() => {
-        chatSessionRef.current = ai.chats.create({
-            model: 'gemini-2.5-flash',
-            config: { tools: [{ functionDeclarations }] }
-        });
+        try {
+            if (apiKey === 'temp-key-placeholder') {
+                console.warn('Gemini API key not configured. AI features will not work.');
+                return;
+            }
+            chatSessionRef.current = ai.chats.create({
+                model: 'gemini-2.5-flash',
+                config: { tools: [{ functionDeclarations }] }
+            });
+            console.log('Gemini chat session initialized successfully');
+        } catch (error) {
+            console.error('Failed to initialize Gemini chat session:', error);
+        }
     }, []);
 
     const findProjectByName = (name: string) => dataContext.projects.find(p => p.name.toLowerCase().includes(name.toLowerCase()));
@@ -292,7 +303,19 @@ export const useGemini = () => {
     };
 
     const sendMessage = async (message: string, image?: string) => {
-        if (!chatSessionRef.current) return;
+        if (!chatSessionRef.current) {
+            console.error('Chat session not initialized');
+            const errorResponse: Chat = { sender: 'model', message: "AI features are not available. Please check your API configuration." };
+            setHistory(prev => [...prev, errorResponse]);
+            return;
+        }
+
+        if (apiKey === 'temp-key-placeholder') {
+            const errorResponse: Chat = { sender: 'model', message: "AI features require a valid API key. Please configure your Gemini API key." };
+            setHistory(prev => [...prev, errorResponse]);
+            return;
+        }
+
         setIsLoading(true);
         const userMessage: Chat = { sender: 'user', message, image };
         setHistory(prev => [...prev, userMessage]);
@@ -316,14 +339,24 @@ export const useGemini = () => {
 
             while (response.functionCalls && response.functionCalls.length > 0) {
                  const functionResponseParts = response.functionCalls.map((funcCall) => {
-                    // @ts-ignore
-                    const result = functions[funcCall.name](funcCall.args);
-                    return {
-                        functionResponse: {
-                            name: funcCall.name,
-                            response: result,
-                        },
-                    };
+                    try {
+                        // @ts-ignore
+                        const result = functions[funcCall.name](funcCall.args);
+                        return {
+                            functionResponse: {
+                                name: funcCall.name,
+                                response: result,
+                            },
+                        };
+                    } catch (functionError) {
+                        console.error(`Error executing function ${funcCall.name}:`, functionError);
+                        return {
+                            functionResponse: {
+                                name: funcCall.name,
+                                response: { success: false, message: `Error executing ${funcCall.name}: ${functionError.message}` },
+                            },
+                        };
+                    }
                  });
 
                 // FIX: The sendMessage method expects an object with a `message` property.
@@ -334,8 +367,22 @@ export const useGemini = () => {
             setHistory(prev => [...prev, modelResponse]);
 
         } catch (error) {
-            console.error(error);
-            const errorResponse: Chat = { sender: 'model', message: "Sorry, I encountered an error." };
+            console.error('Gemini API error:', error);
+            let errorMessage = "Sorry, I encountered an error.";
+            
+            if (error instanceof Error) {
+                if (error.message.includes('API_KEY')) {
+                    errorMessage = "API key error. Please check your Gemini API configuration.";
+                } else if (error.message.includes('quota')) {
+                    errorMessage = "API quota exceeded. Please try again later.";
+                } else if (error.message.includes('network')) {
+                    errorMessage = "Network error. Please check your internet connection.";
+                } else {
+                    errorMessage = `Error: ${error.message}`;
+                }
+            }
+            
+            const errorResponse: Chat = { sender: 'model', message: errorMessage };
             setHistory(prev => [...prev, errorResponse]);
         } finally {
             setIsLoading(false);

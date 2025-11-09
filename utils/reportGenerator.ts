@@ -4,7 +4,7 @@ import { GoogleGenAI } from '@google/genai';
 import { Project, Task, TimeLog, User } from '../types';
 import ProjectReport from '../components/ProjectReport';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || 'temp-placeholder' });
 
 interface ReportData {
     project: Project & { currentSpend: number }; // Require currentSpend to be passed in
