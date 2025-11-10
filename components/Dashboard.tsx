@@ -1,20 +1,69 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import Card from './Card';
 import { useData } from '../hooks/useDataContext';
 import { TaskStatus } from '../types';
 import { isThisWeek } from 'date-fns';
 import { Link } from 'react-router-dom';
-import ProjectListItem from './ProjectListItem'; // Import the new detailed component
+import ProjectListItem from './ProjectListItem';
+import DataMigrationModal from './DataMigrationModal';
 
 const Dashboard: React.FC = () => {
+    const [showMigrationModal, setShowMigrationModal] = useState(false);
+
     try {
-        const { projects, tasks, users, currentUser, timeLogs } = useData();
+        const { projects, tasks, users, currentUser, timeLogs, isLoading, error } = useData();
+
+        if (isLoading) {
+            return (
+                <div className="text-center py-10">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                    <h1 className="text-2xl font-bold text-gray-800 mt-4">Loading Dashboard...</h1>
+                    <p className="mt-2 text-gray-600">Connecting to cloud database...</p>
+                </div>
+            );
+        }
+
+        if (error) {
+            return (
+                <div className="text-center py-10">
+                    <div className="text-red-500 mb-4">
+                        <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <h1 className="text-2xl font-bold text-gray-800">Error Loading Data</h1>
+                    <p className="mt-2 text-gray-600">{error}</p>
+                    <button 
+                        onClick={() => window.location.reload()}
+                        className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    >
+                        Retry
+                    </button>
+                    <button 
+                        onClick={() => setShowMigrationModal(true)}
+                        className="mt-4 ml-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                    >
+                        Migrate Local Data
+                    </button>
+                </div>
+            );
+        }
 
         if (!currentUser && users.length === 0) {
             return (
                 <div className="text-center py-10">
                     <h1 className="text-2xl font-bold text-gray-800">Welcome to ConstructTrack Pro</h1>
                     <p className="mt-2 text-gray-600">Get started by adding your first team member.</p>
+                    <button 
+                        onClick={() => setShowMigrationModal(true)}
+                        className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    >
+                        Import Local Data
+                    </button>
+                    <DataMigrationModal 
+                        isOpen={showMigrationModal} 
+                        onClose={() => setShowMigrationModal(false)} 
+                    />
                 </div>
             );
         }
@@ -45,10 +94,11 @@ const Dashboard: React.FC = () => {
         const projectsInProgress = useMemo(() => projects.filter(p => p.status === 'In Progress'), [projects]);
 
         return (
-            <div className="space-y-6">
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
-                    {currentUser ? `Welcome back, ${currentUser.name.split(' ')[0]}!` : "Dashboard"}
-                </h1>
+            <>
+                <div className="space-y-6">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+                        {currentUser ? `Welcome back, ${currentUser.name.split(' ')[0]}!` : "Dashboard"}
+                    </h1>
                 
                 {/* Quick Stats */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -146,6 +196,12 @@ const Dashboard: React.FC = () => {
                     ) : <p className="text-gray-500">No projects are currently in progress.</p>}
                 </Card>
             </div>
+
+            <DataMigrationModal 
+                isOpen={showMigrationModal} 
+                onClose={() => setShowMigrationModal(false)} 
+            />
+            </>
         );
     } catch (error) {
         console.error('Dashboard error:', error);

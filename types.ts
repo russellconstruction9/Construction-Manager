@@ -28,6 +28,8 @@ export interface User {
   hourlyRate: number;
   clockInTime?: Date;
   currentProjectId?: number;
+  email?: string;
+  phone?: string;
 }
 
 export interface PunchListItem {
@@ -48,28 +50,36 @@ export interface Project {
   name: string;
   address: string;
   type: ProjectType;
-  status: 'In Progress' | 'Completed' | 'On Hold';
+  status: 'Planning' | 'In Progress' | 'Completed' | 'On Hold';
   startDate: Date;
   endDate: Date;
   budget: number;
   punchList: PunchListItem[];
   photos: ProjectPhoto[];
+  description?: string;
+  progressPercentage?: number;
+  clientName?: string;
+  clientEmail?: string;
+  clientPhone?: string;
 }
 
 export interface Task {
   id: number;
   title: string;
   description: string;
-  projectId: number;
-  assigneeId: number;
-  dueDate: Date;
+  projectId?: number;
+  assignedTo?: number;
+  dueDate?: Date;
   status: TaskStatus;
+  priority?: string;
+  estimatedHours?: number;
+  actualHours?: number;
 }
 
 export interface TimeLog {
   id: number;
   userId: number;
-  projectId: number;
+  projectId?: number;
   clockIn: Date;
   clockOut?: Date;
   durationMs?: number;
@@ -79,15 +89,20 @@ export interface TimeLog {
   clockInMapImage?: string;
   clockOutMapImage?: string;
   invoiceId?: number;
+  notes?: string;
 }
 
 export interface InventoryItem {
   id: number;
   name: string;
+  description: string;
   quantity: number;
   unit: string;
-  cost?: number; // Cost per unit
-  lowStockThreshold?: number;
+  costPerUnit: number;
+  supplier: string;
+  category: string;
+  location: string;
+  minQuantity: number;
 }
 
 export interface InventoryOrderItem {
