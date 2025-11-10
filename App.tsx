@@ -2,7 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { DataProvider } from './hooks/useDataContext';
 import { ToastProvider } from './components/Toast';
-import ErrorBoundary from './components/ErrorBoundary';
+import ErrorBoundary from './components/ErrorBoundarySimple';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import Projects from './components/Projects';
@@ -20,6 +20,7 @@ import MapView from './components/MapView';
 import Invoices from './components/Invoices';
 import InvoiceDetails from './components/InvoiceDetails';
 import InvoiceEditor from './components/InvoiceEditor';
+import SupabaseConnectionTest from './components/SupabaseConnectionTest';
 
 
 const App: React.FC = () => {
@@ -126,6 +127,11 @@ const App: React.FC = () => {
               <Route path="/profile" element={
                 <ErrorBoundary fallback={<div>Error loading profile</div>}>
                   <Profile />
+                </ErrorBoundary>
+              } />
+              <Route path="/test-supabase" element={
+                <ErrorBoundary fallback={<div>Error loading Supabase test</div>}>
+                  <SupabaseConnectionTest />
                 </ErrorBoundary>
               } />
               <Route path="*" element={<Navigate to="/" replace />} />

@@ -41,7 +41,7 @@ const dbProjectToAppProject = (dbProject: DBProject): Project => ({
          dbProject.description?.includes('Interior') ? ProjectType.InteriorFitOut :
          dbProject.description?.includes('Demolition') ? ProjectType.Demolition :
          ProjectType.NewConstruction) as ProjectType,
-  status: dbProject.status || 'Planning',
+  status: (dbProject.status || 'Planning') as 'Planning' | 'In Progress' | 'Completed' | 'On Hold',
   startDate: dbProject.start_date ? new Date(dbProject.start_date) : new Date(),
   endDate: dbProject.end_date ? new Date(dbProject.end_date) : new Date(),
   budget: Number(dbProject.budget) || 0,
