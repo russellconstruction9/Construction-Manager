@@ -1,96 +1,11 @@
 import { supabase } from './supabaseClient';
-import { Database, Tables } from '../supabase-types';
-import { User, Project, Task, TimeLog, InventoryItem, ProjectPhoto, TaskStatus, ProjectType } from '../types';
+import { Database } from '../supabase-types';
+import { User, Project, Task, TimeLog, InventoryItem, TaskStatus, ProjectType } from '../types';
 
-// Type aliases for better readability
-type DBUser = Tables<'users'>;
-type DBProject = Tables<'projects'>;
-type DBTask = Tables<'tasks'>;
-type DBTimeLog = Tables<'time_logs'>;
-type DBInventory = Tables<'inventory'>;
-type DBProjectPhoto = Tables<'project_photos'>;
-
-// Helper functions to convert between app types and database types
-const dbUserToAppUser = (dbUser: DBUser): User => ({
-  id: parseInt(dbUser.id.slice(-8), 16), // Convert UUID to number for compatibility
-  name: dbUser.name,
-  role: dbUser.role || 'worker',
-  hourlyRate: Number(dbUser.hourly_rate) || 25,
-  avatarUrl: dbUser.avatar_url || `data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2E5YTlhOSI+PHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMTguNjg1IDE5LjA5N0E5LjcyMyA5LjcyMyAwIDAwMjEuNzUgMTJjMC01LjM4NS00LjM2NS05Ljc1LTkuNzUtOS43NVMxLjI1IDYuNjE1IDEuMjUgMTJhOS43MjMgOS43MjMgMCAwMDMuMDY1IDcuMDk3QTkuNzE2IDkuNzE2IDAgMDAxMiAyMS43NWE5LjcxNiA5LjcxNiAwIDAwNi42ODUtMi42NTN6bS0xMi41NC0xLjI4NUE3LjQ4NiA3LjQ4NiAwIDAxMTIgMTVhNy40ODYgNy40ODYgMCAwMTUuODU1IDIuODEyQTguMjI0IDguMjI0IDAgMDExMiAyMC4yNWE4LjIyNCA4LjIyNCAwIDAxLTUuODU1LTIuNDM4ek0xNS43NSA5YTMuNzUgMy43NSAwIDExLTcuNSAwIDMuNzUgMy43NSAwIDAxNy41IDB6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIC8+PC9zdmc+`,
-  isClockedIn: dbUser.is_clocked_in || false,
-  email: dbUser.email || undefined,
-  phone: dbUser.phone || undefined,
-});
-
-const appUserToDbUser = (user: Omit<User, 'id'>): Database['public']['Tables']['users']['Insert'] => ({
-  name: user.name,
-  role: user.role,
-  hourly_rate: user.hourlyRate,
-  avatar_url: user.avatarUrl,
-  is_clocked_in: user.isClockedIn,
-  email: user.email,
-  phone: user.phone,
-});
-
-const dbProjectToAppProject = (dbProject: DBProject): Project => ({
-  id: parseInt(dbProject.id.slice(-8), 16),
-  name: dbProject.name,
-  address: dbProject.address || '',
-  type: (dbProject.description?.includes('Renovation') ? ProjectType.Renovation :
-         dbProject.description?.includes('New') ? ProjectType.NewConstruction :
-         dbProject.description?.includes('Interior') ? ProjectType.InteriorFitOut :
-         dbProject.description?.includes('Demolition') ? ProjectType.Demolition :
-         ProjectType.NewConstruction) as ProjectType,
-  status: (dbProject.status || 'Planning') as 'Planning' | 'In Progress' | 'Completed' | 'On Hold',
-  startDate: dbProject.start_date ? new Date(dbProject.start_date) : new Date(),
-  endDate: dbProject.end_date ? new Date(dbProject.end_date) : new Date(),
-  budget: Number(dbProject.budget) || 0,
-  punchList: [], // Will be loaded separately if needed
-  photos: [], // Will be loaded separately
-  progressPercentage: dbProject.progress_percentage || 0,
-  clientName: dbProject.client_name || undefined,
-  clientEmail: dbProject.client_email || undefined,
-  clientPhone: dbProject.client_phone || undefined,
-  description: dbProject.description || undefined,
-});
-
-const appProjectToDbProject = (project: Omit<Project, 'id' | 'punchList' | 'photos'>): Database['public']['Tables']['projects']['Insert'] => ({
-  name: project.name,
-  address: project.address,
-  description: `${project.type} project${project.description ? ': ' + project.description : ''}`,
-  status: project.status,
-  start_date: project.startDate.toISOString().split('T')[0],
-  end_date: project.endDate.toISOString().split('T')[0],
-  budget: project.budget,
-  progress_percentage: project.progressPercentage || 0,
-  client_name: project.clientName,
-  client_email: project.clientEmail,
-  client_phone: project.clientPhone,
-});
-
-const dbTaskToAppTask = (dbTask: DBTask): Task => ({
-  id: parseInt(dbTask.id.slice(-8), 16),
-  title: dbTask.title,
-  description: dbTask.description || '',
-  status: (dbTask.status || 'To Do') as TaskStatus,
-  priority: dbTask.priority || 'Medium',
-  projectId: dbTask.project_id ? parseInt(dbTask.project_id.slice(-8), 16) : undefined,
-  assignedTo: dbTask.assigned_to ? parseInt(dbTask.assigned_to.slice(-8), 16) : undefined,
-  dueDate: dbTask.due_date ? new Date(dbTask.due_date) : undefined,
-  estimatedHours: Number(dbTask.estimated_hours) || undefined,
-  actualHours: Number(dbTask.actual_hours) || 0,
-});
-
-const dbTimeLogToAppTimeLog = (dbLog: DBTimeLog): TimeLog => ({
-  id: parseInt(dbLog.id.slice(-8), 16),
-  userId: parseInt(dbLog.user_id.slice(-8), 16),
-  projectId: dbLog.project_id ? parseInt(dbLog.project_id.slice(-8), 16) : undefined,
-  clockIn: new Date(dbLog.clock_in),
-  clockOut: dbLog.clock_out ? new Date(dbLog.clock_out) : undefined,
-  durationMs: Number(dbLog.duration_ms) || undefined,
-  cost: Number(dbLog.cost) || undefined,
-  notes: dbLog.notes || undefined,
-});
+/**
+ * IMPORTANT: This service layer uses app_id columns for compatibility with the existing app
+ * The database uses UUIDs as primary keys, but we add app_id (SERIAL) columns for app compatibility
+ */
 
 // User operations
 export const userService = {
@@ -101,46 +16,77 @@ export const userService = {
       .order('name');
     
     if (error) throw error;
-    return data.map(dbUserToAppUser);
+    
+    return data.map(user => ({
+      id: user.app_id,
+      name: user.name,
+      role: user.role || 'worker',
+      hourlyRate: Number(user.hourly_rate) || 25,
+      avatarUrl: user.avatar_url || `data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2E5YTlhOSI+PHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMTguNjg1IDE5LjA5N0E5LjcyMyA5LjcyMyAwIDAwMjEuNzUgMTJjMC01LjM4NS00LjM2NS05Ljc1LTkuNzUtOS43NVMxLjI1IDYuNjE1IDEuMjUgMTJhOS43MjMgOS43MjMgMCAwMDMuMDY1IDcuMDk3QTkuNzE2IDkuNzE2IDAgMDAxMiAyMS43NWE5LjcxNiA5LjcxNiAwIDAwNi42ODUtMi42NTN6bS0xMi41NC0xLjI4NUE3LjQ4NiA3LjQ4NiAwIDAxMTIgMTVhNy40ODYgNy40ODYgMCAwMTUuODU1IDIuODEyQTguMjI0IDguMjI0IDAgMDExMiAyMC4yNWE4LjIyNCA4LjIyNCAwIDAxLTUuODU1LTIuNDM4ek0xNS43NSA5YTMuNzUgMy43NSAwIDExLTcuNSAwIDMuNzUgMy43NSAwIDAxNy41IDB6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIC8+PC9zdmc+`,
+      isClockedIn: user.is_clocked_in || false,
+      email: user.email || undefined,
+      phone: user.phone || undefined,
+    }));
   },
 
   async create(user: Omit<User, 'id'>): Promise<User> {
     const { data, error } = await supabase
       .from('users')
-      .insert(appUserToDbUser(user))
-      .select()
+      .insert({
+        name: user.name,
+        role: user.role,
+        hourly_rate: user.hourlyRate,
+        avatar_url: user.avatarUrl,
+        is_clocked_in: user.isClockedIn,
+        email: user.email,
+        phone: user.phone,
+      })
+      .select('*')
       .single();
     
     if (error) throw error;
-    return dbUserToAppUser(data);
+    
+    return {
+      id: data.app_id,
+      name: data.name,
+      role: data.role || 'worker',
+      hourlyRate: Number(data.hourly_rate) || 25,
+      avatarUrl: data.avatar_url || `data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2E5YTlhOSI+PHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMTguNjg1IDE5LjA5N0E5LjcyMyA5LjcyMyAwIDAwMjEuNzUgMTJjMC01LjM4NS00LjM2NS05Ljc1LTkuNzUtOS43NVMxLjI1IDYuNjE1IDEuMjUgMTJhOS43MjMgOS43MjMgMCAwMDMuMDY1IDcuMDk3QTkuNzE2IDkuNzE2IDAgMDAxMiAyMS43NWE5LjcxNiA5LjcxNiAwIDAwNi42ODUtMi42NTN6bS0xMi41NC0xLjI4NUE3LjQ4NiA3LjQ4NiAwIDAxMTIgMTVhNy40ODYgNy40ODYgMCAwMTUuODU1IDIuODEyQTguMjI0IDguMjI0IDAgMDExMiAyMC4yNWE4LjIyNCA4LjIyNCAwIDAxLTUuODU1LTIuNDM4ek0xNS43NSA5YTMuNzUgMy43NSAwIDExLTcuNSAwIDMuNzUgMy43NSAwIDAxNy41IDB6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIC8+PC9zdmc+`,
+      isClockedIn: data.is_clocked_in || false,
+      email: data.email || undefined,
+      phone: data.phone || undefined,
+    };
   },
 
   async update(id: number, updates: Partial<Omit<User, 'id'>>): Promise<User> {
-    // Find user by converted ID
-    const { data: users } = await supabase
-      .from('users')
-      .select('*');
-    
-    const user = users?.find(u => parseInt(u.id.slice(-8), 16) === id);
-    if (!user) throw new Error(`User with id ${id} not found`);
+    const updateData: any = {};
+    if (updates.name !== undefined) updateData.name = updates.name;
+    if (updates.role !== undefined) updateData.role = updates.role;
+    if (updates.hourlyRate !== undefined) updateData.hourly_rate = updates.hourlyRate;
+    if (updates.avatarUrl !== undefined) updateData.avatar_url = updates.avatarUrl;
+    if (updates.isClockedIn !== undefined) updateData.is_clocked_in = updates.isClockedIn;
+    if (updates.email !== undefined) updateData.email = updates.email;
+    if (updates.phone !== undefined) updateData.phone = updates.phone;
 
     const { data, error } = await supabase
       .from('users')
-      .update({
-        ...updates.name && { name: updates.name },
-        ...updates.role && { role: updates.role },
-        ...updates.hourlyRate && { hourly_rate: updates.hourlyRate },
-        ...updates.avatarUrl && { avatar_url: updates.avatarUrl },
-        ...updates.isClockedIn !== undefined && { is_clocked_in: updates.isClockedIn },
-        ...updates.email && { email: updates.email },
-        ...updates.phone && { phone: updates.phone },
-      })
-      .eq('id', user.id)
-      .select()
+      .update(updateData)
+      .eq('app_id', id)
+      .select('*')
       .single();
     
     if (error) throw error;
-    return dbUserToAppUser(data);
+    
+    return {
+      id: data.app_id,
+      name: data.name,
+      role: data.role || 'worker',
+      hourlyRate: Number(data.hourly_rate) || 25,
+      avatarUrl: data.avatar_url || `data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2E5YTlhOSI+PHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMTguNjg1IDE5LjA5N0E5LjcyMyA5LjcyMyAwIDAwMjEuNzUgMTJjMC01LjM4NS00LjM2NS05Ljc1LTkuNzUtOS43NVMxLjI1IDYuNjE1IDEuMjUgMTJhOS43MjMgOS43MjMgMCAwMDMuMDY1IDcuMDk3QTkuNzE2IDkuNzE2IDAgMDAxMiAyMS43NWE5LjcxNiA5LjcxNiAwIDAwNi42ODUtMi42NTN6bS0xMi41NC0xLjI4NUE3LjQ4NiA3LjQ4NiAwIDAxMTIgMTVhNy40ODYgNy40ODYgMCAwMTUuODU1IDIuODEyQTguMjI0IDguMjI0IDAgMDExMiAyMC4yNWE4LjIyNCA4LjIyNCAwIDAxLTUuODU1LTIuNDM4ek0xNS43NSA5YTMuNzUgMy43NSAwIDExLTcuNSAwIDMuNzUgMy43NSAwIDAxNy41IDB6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIC8+PC9zdmc+`,
+      isClockedIn: data.is_clocked_in || false,
+      email: data.email || undefined,
+      phone: data.phone || undefined,
+    };
   },
 };
 
@@ -153,49 +99,110 @@ export const projectService = {
       .order('name');
     
     if (error) throw error;
-    return data.map(dbProjectToAppProject);
+    
+    return data.map(project => ({
+      id: project.app_id,
+      name: project.name,
+      address: project.address || '',
+      type: (project.description?.includes('Renovation') ? ProjectType.Renovation :
+             project.description?.includes('New') ? ProjectType.NewConstruction :
+             project.description?.includes('Interior') ? ProjectType.InteriorFitOut :
+             project.description?.includes('Demolition') ? ProjectType.Demolition :
+             ProjectType.NewConstruction) as ProjectType,
+      status: (project.status || 'Planning') as 'Planning' | 'In Progress' | 'Completed' | 'On Hold',
+      startDate: project.start_date ? new Date(project.start_date) : new Date(),
+      endDate: project.end_date ? new Date(project.end_date) : new Date(),
+      budget: Number(project.budget) || 0,
+      punchList: [],
+      photos: [],
+      progressPercentage: project.progress_percentage || 0,
+      clientName: project.client_name || undefined,
+      clientEmail: project.client_email || undefined,
+      clientPhone: project.client_phone || undefined,
+      description: project.description || undefined,
+    }));
   },
 
   async create(project: Omit<Project, 'id' | 'punchList' | 'photos'>): Promise<Project> {
-    const { data, error } = await supabase
+    const { data, error} = await supabase
       .from('projects')
-      .insert(appProjectToDbProject(project))
-      .select()
+      .insert({
+        name: project.name,
+        address: project.address,
+        description: `${project.type} project${project.description ? ': ' + project.description : ''}`,
+        status: project.status,
+        start_date: project.startDate.toISOString().split('T')[0],
+        end_date: project.endDate.toISOString().split('T')[0],
+        budget: project.budget,
+        progress_percentage: project.progressPercentage || 0,
+        client_name: project.clientName,
+        client_email: project.clientEmail,
+        client_phone: project.clientPhone,
+      })
+      .select('*')
       .single();
     
     if (error) throw error;
-    return dbProjectToAppProject(data);
+    
+    return {
+      id: data.app_id,
+      name: data.name,
+      address: data.address || '',
+      type: project.type,
+      status: (data.status || 'Planning') as 'Planning' | 'In Progress' | 'Completed' | 'On Hold',
+      startDate: data.start_date ? new Date(data.start_date) : new Date(),
+      endDate: data.end_date ? new Date(data.end_date) : new Date(),
+      budget: Number(data.budget) || 0,
+      punchList: [],
+      photos: [],
+      progressPercentage: data.progress_percentage || 0,
+      clientName: data.client_name || undefined,
+      clientEmail: data.client_email || undefined,
+      clientPhone: data.client_phone || undefined,
+      description: data.description || undefined,
+    };
   },
 
   async update(id: number, updates: Partial<Project>): Promise<Project> {
-    const { data: projects } = await supabase
-      .from('projects')
-      .select('*');
-    
-    const project = projects?.find(p => parseInt(p.id.slice(-8), 16) === id);
-    if (!project) throw new Error(`Project with id ${id} not found`);
+    const updateData: any = {};
+    if (updates.name !== undefined) updateData.name = updates.name;
+    if (updates.address !== undefined) updateData.address = updates.address;
+    if (updates.status !== undefined) updateData.status = updates.status;
+    if (updates.startDate !== undefined) updateData.start_date = updates.startDate.toISOString().split('T')[0];
+    if (updates.endDate !== undefined) updateData.end_date = updates.endDate.toISOString().split('T')[0];
+    if (updates.budget !== undefined) updateData.budget = updates.budget;
+    if (updates.progressPercentage !== undefined) updateData.progress_percentage = updates.progressPercentage;
+    if (updates.clientName !== undefined) updateData.client_name = updates.clientName;
+    if (updates.clientEmail !== undefined) updateData.client_email = updates.clientEmail;
+    if (updates.clientPhone !== undefined) updateData.client_phone = updates.clientPhone;
+    if (updates.description !== undefined) updateData.description = updates.description;
 
     const { data, error } = await supabase
       .from('projects')
-      .update({
-        ...updates.name && { name: updates.name },
-        ...updates.address && { address: updates.address },
-        ...updates.status && { status: updates.status },
-        ...updates.startDate && { start_date: updates.startDate.toISOString().split('T')[0] },
-        ...updates.endDate && { end_date: updates.endDate.toISOString().split('T')[0] },
-        ...updates.budget && { budget: updates.budget },
-        ...updates.progressPercentage !== undefined && { progress_percentage: updates.progressPercentage },
-        ...updates.clientName && { client_name: updates.clientName },
-        ...updates.clientEmail && { client_email: updates.clientEmail },
-        ...updates.clientPhone && { client_phone: updates.clientPhone },
-        ...updates.description && { description: updates.description },
-      })
-      .eq('id', project.id)
-      .select()
+      .update(updateData)
+      .eq('app_id', id)
+      .select('*')
       .single();
     
     if (error) throw error;
-    return dbProjectToAppProject(data);
+    
+    return {
+      id: data.app_id,
+      name: data.name,
+      address: data.address || '',
+      type: updates.type || ProjectType.NewConstruction,
+      status: (data.status || 'Planning') as 'Planning' | 'In Progress' | 'Completed' | 'On Hold',
+      startDate: data.start_date ? new Date(data.start_date) : new Date(),
+      endDate: data.end_date ? new Date(data.end_date) : new Date(),
+      budget: Number(data.budget) || 0,
+      punchList: [],
+      photos: [],
+      progressPercentage: data.progress_percentage || 0,
+      clientName: data.client_name || undefined,
+      clientEmail: data.client_email || undefined,
+      clientPhone: data.client_phone || undefined,
+      description: data.description || undefined,
+    };
   },
 };
 
@@ -204,20 +211,51 @@ export const taskService = {
   async getAll(): Promise<Task[]> {
     const { data, error } = await supabase
       .from('tasks')
-      .select('*')
+      .select(`
+        *,
+        projects:project_id(app_id),
+        users:assigned_to(app_id)
+      `)
       .order('created_at', { ascending: false });
     
     if (error) throw error;
-    return data.map(dbTaskToAppTask);
+    
+    return data.map(task => ({
+      id: task.app_id,
+      title: task.title,
+      description: task.description || '',
+      status: (task.status || 'To Do') as TaskStatus,
+      priority: task.priority || 'Medium',
+      projectId: task.projects ? (task.projects as any).app_id : undefined,
+      assignedTo: task.users ? (task.users as any).app_id : undefined,
+      dueDate: task.due_date ? new Date(task.due_date) : undefined,
+      estimatedHours: Number(task.estimated_hours) || undefined,
+      actualHours: Number(task.actual_hours) || 0,
+    }));
   },
 
   async create(task: Omit<Task, 'id'>): Promise<Task> {
-    // Convert app IDs to UUIDs
-    const { data: projects } = await supabase.from('projects').select('*');
-    const { data: users } = await supabase.from('users').select('*');
-    
-    const project = task.projectId ? projects?.find(p => parseInt(p.id.slice(-8), 16) === task.projectId) : null;
-    const user = task.assignedTo ? users?.find(u => parseInt(u.id.slice(-8), 16) === task.assignedTo) : null;
+    // Get UUID for project_id and assigned_to if they exist
+    let projectUuid = null;
+    let userUuid = null;
+
+    if (task.projectId) {
+      const { data: projectData } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('app_id', task.projectId)
+        .single();
+      projectUuid = projectData?.id;
+    }
+
+    if (task.assignedTo) {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('id')
+        .eq('app_id', task.assignedTo)
+        .single();
+      userUuid = userData?.id;
+    }
 
     const { data, error } = await supabase
       .from('tasks')
@@ -226,41 +264,70 @@ export const taskService = {
         description: task.description,
         status: task.status,
         priority: task.priority,
-        project_id: project?.id || null,
-        assigned_to: user?.id || null,
+        project_id: projectUuid,
+        assigned_to: userUuid,
         due_date: task.dueDate?.toISOString().split('T')[0] || null,
         estimated_hours: task.estimatedHours || null,
         actual_hours: task.actualHours || 0,
       })
-      .select()
+      .select(`
+        *,
+        projects:project_id(app_id),
+        users:assigned_to(app_id)
+      `)
       .single();
     
     if (error) throw error;
-    return dbTaskToAppTask(data);
+    
+    return {
+      id: data.app_id,
+      title: data.title,
+      description: data.description || '',
+      status: (data.status || 'To Do') as TaskStatus,
+      priority: data.priority || 'Medium',
+      projectId: data.projects ? (data.projects as any).app_id : undefined,
+      assignedTo: data.users ? (data.users as any).app_id : undefined,
+      dueDate: data.due_date ? new Date(data.due_date) : undefined,
+      estimatedHours: Number(data.estimated_hours) || undefined,
+      actualHours: Number(data.actual_hours) || 0,
+    };
   },
 
   async update(id: number, updates: Partial<Task>): Promise<Task> {
-    const { data: tasks } = await supabase.from('tasks').select('*');
-    const task = tasks?.find(t => parseInt(t.id.slice(-8), 16) === id);
-    if (!task) throw new Error(`Task with id ${id} not found`);
+    const updateData: any = {};
+    if (updates.title !== undefined) updateData.title = updates.title;
+    if (updates.description !== undefined) updateData.description = updates.description;
+    if (updates.status !== undefined) updateData.status = updates.status;
+    if (updates.priority !== undefined) updateData.priority = updates.priority;
+    if (updates.dueDate !== undefined) updateData.due_date = updates.dueDate?.toISOString().split('T')[0];
+    if (updates.estimatedHours !== undefined) updateData.estimated_hours = updates.estimatedHours;
+    if (updates.actualHours !== undefined) updateData.actual_hours = updates.actualHours;
 
     const { data, error } = await supabase
       .from('tasks')
-      .update({
-        ...updates.title && { title: updates.title },
-        ...updates.description && { description: updates.description },
-        ...updates.status && { status: updates.status },
-        ...updates.priority && { priority: updates.priority },
-        ...updates.dueDate && { due_date: updates.dueDate.toISOString().split('T')[0] },
-        ...updates.estimatedHours && { estimated_hours: updates.estimatedHours },
-        ...updates.actualHours !== undefined && { actual_hours: updates.actualHours },
-      })
-      .eq('id', task.id)
-      .select()
+      .update(updateData)
+      .eq('app_id', id)
+      .select(`
+        *,
+        projects:project_id(app_id),
+        users:assigned_to(app_id)
+      `)
       .single();
     
     if (error) throw error;
-    return dbTaskToAppTask(data);
+    
+    return {
+      id: data.app_id,
+      title: data.title,
+      description: data.description || '',
+      status: (data.status || 'To Do') as TaskStatus,
+      priority: data.priority || 'Medium',
+      projectId: data.projects ? (data.projects as any).app_id : undefined,
+      assignedTo: data.users ? (data.users as any).app_id : undefined,
+      dueDate: data.due_date ? new Date(data.due_date) : undefined,
+      estimatedHours: Number(data.estimated_hours) || undefined,
+      actualHours: Number(data.actual_hours) || 0,
+    };
   },
 };
 
@@ -269,60 +336,107 @@ export const timeLogService = {
   async getAll(): Promise<TimeLog[]> {
     const { data, error } = await supabase
       .from('time_logs')
-      .select('*')
+      .select(`
+        *,
+        users:user_id(app_id),
+        projects:project_id(app_id)
+      `)
       .order('clock_in', { ascending: false });
     
     if (error) throw error;
-    return data.map(dbTimeLogToAppTimeLog);
+    
+    return data.map(log => ({
+      id: log.app_id,
+      userId: log.users ? (log.users as any).app_id : 0,
+      projectId: log.projects ? (log.projects as any).app_id : undefined,
+      clockIn: new Date(log.clock_in),
+      clockOut: log.clock_out ? new Date(log.clock_out) : undefined,
+      durationMs: Number(log.duration_ms) || undefined,
+      cost: Number(log.cost) || undefined,
+      notes: log.notes || undefined,
+    }));
   },
 
   async create(timeLog: Omit<TimeLog, 'id'>): Promise<TimeLog> {
-    // Convert app IDs to UUIDs
-    const { data: users } = await supabase.from('users').select('*');
-    const { data: projects } = await supabase.from('projects').select('*');
+    // Get UUIDs
+    const { data: userData } = await supabase
+      .from('users')
+      .select('id')
+      .eq('app_id', timeLog.userId)
+      .single();
     
-    const user = users?.find(u => parseInt(u.id.slice(-8), 16) === timeLog.userId);
-    const project = timeLog.projectId ? projects?.find(p => parseInt(p.id.slice(-8), 16) === timeLog.projectId) : null;
-    
-    if (!user) throw new Error(`User with id ${timeLog.userId} not found`);
+    let projectUuid = null;
+    if (timeLog.projectId) {
+      const { data: projectData } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('app_id', timeLog.projectId)
+        .single();
+      projectUuid = projectData?.id;
+    }
 
     const { data, error } = await supabase
       .from('time_logs')
       .insert({
-        user_id: user.id,
-        project_id: project?.id || null,
+        user_id: userData!.id,
+        project_id: projectUuid,
         clock_in: timeLog.clockIn.toISOString(),
         clock_out: timeLog.clockOut?.toISOString() || null,
         duration_ms: timeLog.durationMs || null,
         cost: timeLog.cost || null,
         notes: timeLog.notes || null,
       })
-      .select()
+      .select(`
+        *,
+        users:user_id(app_id),
+        projects:project_id(app_id)
+      `)
       .single();
     
     if (error) throw error;
-    return dbTimeLogToAppTimeLog(data);
+    
+    return {
+      id: data.app_id,
+      userId: data.users ? (data.users as any).app_id : 0,
+      projectId: data.projects ? (data.projects as any).app_id : undefined,
+      clockIn: new Date(data.clock_in),
+      clockOut: data.clock_out ? new Date(data.clock_out) : undefined,
+      durationMs: Number(data.duration_ms) || undefined,
+      cost: Number(data.cost) || undefined,
+      notes: data.notes || undefined,
+    };
   },
 
   async update(id: number, updates: Partial<TimeLog>): Promise<TimeLog> {
-    const { data: timeLogs } = await supabase.from('time_logs').select('*');
-    const timeLog = timeLogs?.find(t => parseInt(t.id.slice(-8), 16) === id);
-    if (!timeLog) throw new Error(`Time log with id ${id} not found`);
+    const updateData: any = {};
+    if (updates.clockOut !== undefined) updateData.clock_out = updates.clockOut.toISOString();
+    if (updates.durationMs !== undefined) updateData.duration_ms = updates.durationMs;
+    if (updates.cost !== undefined) updateData.cost = updates.cost;
+    if (updates.notes !== undefined) updateData.notes = updates.notes;
 
     const { data, error } = await supabase
       .from('time_logs')
-      .update({
-        ...updates.clockOut && { clock_out: updates.clockOut.toISOString() },
-        ...updates.durationMs !== undefined && { duration_ms: updates.durationMs },
-        ...updates.cost !== undefined && { cost: updates.cost },
-        ...updates.notes && { notes: updates.notes },
-      })
-      .eq('id', timeLog.id)
-      .select()
+      .update(updateData)
+      .eq('app_id', id)
+      .select(`
+        *,
+        users:user_id(app_id),
+        projects:project_id(app_id)
+      `)
       .single();
     
     if (error) throw error;
-    return dbTimeLogToAppTimeLog(data);
+    
+    return {
+      id: data.app_id,
+      userId: data.users ? (data.users as any).app_id : 0,
+      projectId: data.projects ? (data.projects as any).app_id : undefined,
+      clockIn: new Date(data.clock_in),
+      clockOut: data.clock_out ? new Date(data.clock_out) : undefined,
+      durationMs: Number(data.duration_ms) || undefined,
+      cost: Number(data.cost) || undefined,
+      notes: data.notes || undefined,
+    };
   },
 };
 
@@ -335,8 +449,9 @@ export const inventoryService = {
       .order('name');
     
     if (error) throw error;
+    
     return data.map(item => ({
-      id: parseInt(item.id.slice(-8), 16),
+      id: item.app_id,
       name: item.name,
       description: item.description || '',
       quantity: item.quantity,
@@ -363,12 +478,13 @@ export const inventoryService = {
         location: item.location,
         min_quantity: item.minQuantity,
       })
-      .select()
+      .select('*')
       .single();
     
     if (error) throw error;
+    
     return {
-      id: parseInt(data.id.slice(-8), 16),
+      id: data.app_id,
       name: data.name,
       description: data.description || '',
       quantity: data.quantity,
@@ -382,30 +498,28 @@ export const inventoryService = {
   },
 
   async update(id: number, updates: Partial<InventoryItem>): Promise<InventoryItem> {
-    const { data: inventory } = await supabase.from('inventory').select('*');
-    const item = inventory?.find(i => parseInt(i.id.slice(-8), 16) === id);
-    if (!item) throw new Error(`Inventory item with id ${id} not found`);
+    const updateData: any = {};
+    if (updates.name !== undefined) updateData.name = updates.name;
+    if (updates.description !== undefined) updateData.description = updates.description;
+    if (updates.quantity !== undefined) updateData.quantity = updates.quantity;
+    if (updates.unit !== undefined) updateData.unit = updates.unit;
+    if (updates.costPerUnit !== undefined) updateData.cost_per_unit = updates.costPerUnit;
+    if (updates.supplier !== undefined) updateData.supplier = updates.supplier;
+    if (updates.category !== undefined) updateData.category = updates.category;
+    if (updates.location !== undefined) updateData.location = updates.location;
+    if (updates.minQuantity !== undefined) updateData.min_quantity = updates.minQuantity;
 
     const { data, error } = await supabase
       .from('inventory')
-      .update({
-        ...updates.name && { name: updates.name },
-        ...updates.description && { description: updates.description },
-        ...updates.quantity !== undefined && { quantity: updates.quantity },
-        ...updates.unit && { unit: updates.unit },
-        ...updates.costPerUnit !== undefined && { cost_per_unit: updates.costPerUnit },
-        ...updates.supplier && { supplier: updates.supplier },
-        ...updates.category && { category: updates.category },
-        ...updates.location && { location: updates.location },
-        ...updates.minQuantity !== undefined && { min_quantity: updates.minQuantity },
-      })
-      .eq('id', item.id)
-      .select()
+      .update(updateData)
+      .eq('app_id', id)
+      .select('*')
       .single();
     
     if (error) throw error;
+    
     return {
-      id: parseInt(data.id.slice(-8), 16),
+      id: data.app_id,
       name: data.name,
       description: data.description || '',
       quantity: data.quantity,
