@@ -1,11 +1,22 @@
-import { useState, useRef, useEffect } from 'react';
-import { GoogleGenAI, FunctionDeclaration, Type, GenerateContentResponse, Chat as GeminiChat } from '@google/genai';
-import { useData } from './useDataContext';
-import { Chat, ProjectType, TaskStatus, User } from '../types';
 
-// Temporary fallback for missing API key
-const apiKey = process.env.API_KEY || 'temp-key-placeholder';
-const ai = new GoogleGenAI({ apiKey });
+import { useState, useRef, useEffect } from 'react';
+import { GoogleGenAI, FunctionDeclaration, Type, GenerateContentResponse, Chat as GeminiChat, Part } from '@google/genai';
+import { useData } from './useDataContext';
+import { Chat, ProjectType, TaskStatus, User, InventoryItem, OrderListItem } from '../types';
+
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+const systemInstruction = `You are an AI assistant for a construction project management app. Your goal is to help users manage their projects efficiently by calling the available functions.
+Today's date is October 20, 2025.
+When a user asks you to perform an action (like creating a project, task, etc.), and they don't provide all the necessary information (like dates, descriptions, assignees), you MUST NOT ask for the missing information.
+Instead, you must intelligently fill in the blanks with realistic, plausible data based on the context. For example:
+- If a start date is missing, assume it's today. If an end date is missing, set it for a reasonable time in the future (e.g., a few weeks or months from now). Dates must be in YYYY-MM-DD format.
+- If a budget is missing, invent a reasonable number for the project type (e.g., $50,000 for a small renovation, $500,000 for new construction).
+- If an assignee for a task is missing, check the list of users and assign it to a relevant person. If no one seems relevant, pick one at random.
+- If a description is missing, create a concise one based on the title.
+- If a project name is needed for a task and not provided, try to infer it from the context or the user's current activity. If not possible, use the most recently active project.
+Your primary goal is to execute the function call. Be proactive and get things done. After a function is executed, confirm the action you have taken in a friendly and concise message.`;
+
 
 const functionDeclarations: FunctionDeclaration[] = [
     // Project Management
@@ -54,6 +65,19 @@ const functionDeclarations: FunctionDeclaration[] = [
             required: ['taskTitle', 'newStatus']
         }
     },
+    // Photo Management
+    {
+        name: 'addPhotoToProject',
+        description: 'Adds a photo to a project. The user must have uploaded a photo for this to work.',
+        parameters: {
+            type: Type.OBJECT,
+            properties: {
+                projectName: { type: Type.STRING, description: 'The name of the project to add the photo to.' },
+                description: { type: Type.STRING, description: 'A description for the photo.' },
+            },
+            required: ['projectName', 'description']
+        }
+    },
     // Time Tracking
     {
         name: 'toggleClockInOut',
@@ -87,6 +111,7 @@ const functionDeclarations: FunctionDeclaration[] = [
                 name: { type: Type.STRING, description: 'The full name of the new team member.' },
                 role: { type: Type.STRING, description: 'The job title or role of the team member.' },
                 hourlyRate: { type: Type.NUMBER, description: 'The hourly pay rate for the team member.' },
+                roleType: { type: Type.STRING, enum: ['Admin', 'Employee'], description: 'The permission level (Admin or Employee). Defaults to Employee.' },
             },
             required: ['name', 'role', 'hourlyRate']
         }
@@ -144,10 +169,44 @@ const functionDeclarations: FunctionDeclaration[] = [
         }
     },
     {
+        name: 'updateInventoryItemDetails',
+        description: 'Updates the details of an existing inventory item, such as its name, unit, or low stock threshold.',
+        parameters: {
+            type: Type.OBJECT,
+            properties: {
+                itemName: { type: Type.STRING, description: 'The current name of the item to update.' },
+                newName: { type: Type.STRING, description: 'The new name for the item.' },
+                newUnit: { type: Type.STRING, description: 'The new unit of measurement.' },
+                newLowStockThreshold: { type: Type.NUMBER, description: 'The new low stock threshold.' },
+            },
+            required: ['itemName']
+        }
+    },
+    {
         name: 'addToOrderList',
         description: 'Adds an existing inventory item to the order list.',
+        parameters: { type: Type.OBJECT, properties: { itemName: { type: Type.STRING, description: 'The name of the inventory item to add.' } }, required: ['itemName'] }
+    },
+    {
+        name: 'addManualItemToOrderList',
+        description: 'Adds a non-inventory, one-off item to the order list.',
         parameters: {
-            type: Type.OBJECT, properties: { itemName: { type: Type.STRING, description: 'The name of the inventory item to add.' } }, required: ['itemName']
+            type: Type.OBJECT,
+            properties: {
+                name: { type: Type.STRING, description: 'The name of the manual item to add.' },
+            },
+            required: ['name']
+        }
+    },
+     {
+        name: 'removeFromOrderList',
+        description: 'Removes an item from the order list.',
+        parameters: {
+            type: Type.OBJECT,
+            properties: {
+                itemName: { type: Type.STRING, description: 'The name of the item to remove. Specify if it was a manual add if known.' },
+            },
+            required: ['itemName']
         }
     },
     {
@@ -174,22 +233,17 @@ export const useGemini = () => {
     const [isLoading, setIsLoading] = useState(false);
     const dataContext = useData();
     const chatSessionRef = useRef<GeminiChat | null>(null);
+    const latestUserImage = useRef<string | undefined>(undefined);
 
     // Initialize chat session once
     useEffect(() => {
-        try {
-            if (apiKey === 'temp-key-placeholder') {
-                console.warn('Gemini API key not configured. AI features will not work.');
-                return;
+        chatSessionRef.current = ai.chats.create({
+            model: 'gemini-2.5-flash',
+            config: { 
+                systemInstruction: systemInstruction,
+                tools: [{ functionDeclarations }] 
             }
-            chatSessionRef.current = ai.chats.create({
-                model: 'gemini-2.5-flash',
-                config: { tools: [{ functionDeclarations }] }
-            });
-            console.log('Gemini chat session initialized successfully');
-        } catch (error) {
-            console.error('Failed to initialize Gemini chat session:', error);
-        }
+        });
     }, []);
 
     const findProjectByName = (name: string) => dataContext.projects.find(p => p.name.toLowerCase().includes(name.toLowerCase()));
@@ -216,6 +270,18 @@ export const useGemini = () => {
             dataContext.updateTaskStatus(task.id, newStatus);
             return { success: true, message: `Task "${taskTitle}" status updated to ${newStatus}.` };
         },
+        addPhotoToProject: ({ projectName, description }: { projectName: string, description: string }) => {
+            if (!latestUserImage.current) {
+                return { success: false, message: "An image was not provided with the user's message." };
+            }
+            const project = findProjectByName(projectName);
+            if (!project) return { success: false, message: `Project "${projectName}" not found.` };
+            
+            const dataUrl = `data:image/jpeg;base64,${latestUserImage.current}`;
+            dataContext.addPhoto(project.id, [dataUrl], description);
+            
+            return { success: true, message: `Photo added to project "${projectName}" with description: "${description}".` };
+        },
         toggleClockInOut: ({ projectName }: { projectName?: string }) => {
             const { currentUser, toggleClockInOut } = dataContext;
             if (currentUser?.isClockedIn) {
@@ -236,8 +302,13 @@ export const useGemini = () => {
             dataContext.switchJob(project.id);
             return { success: true, message: `Successfully switched to project "${newProjectName}".` };
         },
-        addUser: ({ name, role, hourlyRate }: any) => {
-            dataContext.addUser({ name, role, hourlyRate });
+        addUser: ({ name, role, hourlyRate, roleType }: any) => {
+            dataContext.addUser({ 
+                name, 
+                role, 
+                hourlyRate, 
+                roleType: (roleType === 'Admin' || roleType === 'Employee') ? roleType : 'Employee' 
+            });
             return { success: true, message: `Team member "${name}" has been added.` };
         },
         addPunchListItem: ({ projectName, text }: any) => {
@@ -264,11 +335,51 @@ export const useGemini = () => {
             dataContext.updateInventoryItemQuantity(item.id, item.quantity + change);
             return { success: true, message: `Updated quantity for "${itemName}".` };
         },
+        updateInventoryItemDetails: ({ itemName, newName, newUnit, newLowStockThreshold }: { itemName: string, newName?: string, newUnit?: string, newLowStockThreshold?: number }) => {
+            const item = findInventoryItemByName(itemName);
+            if (!item) return { success: false, message: `Inventory item "${itemName}" not found.` };
+            
+            const updates: Partial<Omit<InventoryItem, 'id' | 'quantity'>> = {};
+            if (newName) updates.name = newName;
+            if (newUnit) updates.unit = newUnit;
+            if (newLowStockThreshold !== undefined) updates.lowStockThreshold = newLowStockThreshold;
+
+            if (Object.keys(updates).length === 0) {
+                return { success: false, message: "No new details were provided to update." };
+            }
+
+            dataContext.updateInventoryItem(item.id, updates);
+            return { success: true, message: `Details for "${itemName}" have been updated.` };
+        },
         addToOrderList: ({ itemName }: any) => {
             const item = findInventoryItemByName(itemName);
             if (!item) return { success: false, message: `Inventory item "${itemName}" not found.` };
             dataContext.addToOrderList(item.id);
             return { success: true, message: `Added "${itemName}" to the order list.` };
+        },
+        addManualItemToOrderList: ({ name }: { name: string }) => {
+            dataContext.addManualItemToOrderList(name);
+            return { success: true, message: `Manually added "${name}" to the order list.` };
+        },
+        removeFromOrderList: ({ itemName }: { itemName: string }) => {
+            const orderList = dataContext.orderList;
+            const inventory = dataContext.inventory;
+
+            const itemToRemove = orderList.find(orderItem => {
+                if (orderItem.type === 'inventory') {
+                    const item = inventory.find(i => i.id === orderItem.itemId);
+                    return item && item.name.toLowerCase().includes(itemName.toLowerCase());
+                } else { // manual
+                    return orderItem.name.toLowerCase().includes(itemName.toLowerCase());
+                }
+            });
+
+            if (!itemToRemove) {
+                return { success: false, message: `Item "${itemName}" not found in the order list.` };
+            }
+            
+            dataContext.removeFromOrderList(itemToRemove as OrderListItem);
+            return { success: true, message: `Removed "${itemName}" from the order list.` };
         },
         clearOrderList: () => {
             dataContext.clearOrderList();
@@ -303,63 +414,38 @@ export const useGemini = () => {
     };
 
     const sendMessage = async (message: string, image?: string) => {
-        if (!chatSessionRef.current) {
-            console.error('Chat session not initialized');
-            const errorResponse: Chat = { sender: 'model', message: "AI features are not available. Please check your API configuration." };
-            setHistory(prev => [...prev, errorResponse]);
-            return;
-        }
-
-        if (apiKey === 'temp-key-placeholder') {
-            const errorResponse: Chat = { sender: 'model', message: "AI features require a valid API key. Please configure your Gemini API key." };
-            setHistory(prev => [...prev, errorResponse]);
-            return;
-        }
-
+        if (!chatSessionRef.current) return;
         setIsLoading(true);
         const userMessage: Chat = { sender: 'user', message, image };
         setHistory(prev => [...prev, userMessage]);
 
-        const parts: any[] = [];
+        const parts: Part[] = [];
         let promptText = message;
+        latestUserImage.current = image;
 
         if (image) {
-            promptText = `Extract the project details from this image and call the addProject function. If any details are missing, make reasonable assumptions or state they are missing. The user's original prompt was: "${message}"`;
+            promptText = `The user has uploaded an image and says: "${message}". Analyze the request and the image content. Call the most appropriate function, like 'addProject' if it's a new project plan, or 'addPhotoToProject' if it's a progress photo for an existing project. Fill in any missing details like project name or description based on the conversation history and image content.`;
             parts.push({
                 inlineData: { mimeType: 'image/jpeg', data: image }
             });
         }
         
-        const fullPrompt = `(Today's date is 10/20/2025) ${promptText}`;
-        parts.unshift({ text: fullPrompt });
+        parts.unshift({ text: promptText });
         
         try {
-            // FIX: The sendMessage method expects an object with a `message` property containing the parts array.
             let response: GenerateContentResponse = await chatSessionRef.current.sendMessage({ message: parts });
 
             while (response.functionCalls && response.functionCalls.length > 0) {
                  const functionResponseParts = response.functionCalls.map((funcCall) => {
-                    try {
-                        // @ts-ignore
-                        const result = functions[funcCall.name](funcCall.args);
-                        return {
-                            functionResponse: {
-                                name: funcCall.name,
-                                response: result,
-                            },
-                        };
-                    } catch (functionError) {
-                        console.error(`Error executing function ${funcCall.name}:`, functionError);
-                        return {
-                            functionResponse: {
-                                name: funcCall.name,
-                                response: { success: false, message: `Error executing ${funcCall.name}: ${functionError.message}` },
-                            },
-                        };
-                    }
+                    // @ts-ignore
+                    const result = functions[funcCall.name](funcCall.args);
+                    return {
+                        functionResponse: {
+                            name: funcCall.name,
+                            response: result,
+                        },
+                    };
                  });
-
-                // FIX: The sendMessage method expects an object with a `message` property.
                 response = await chatSessionRef.current.sendMessage({ message: functionResponseParts });
             }
             
@@ -367,22 +453,8 @@ export const useGemini = () => {
             setHistory(prev => [...prev, modelResponse]);
 
         } catch (error) {
-            console.error('Gemini API error:', error);
-            let errorMessage = "Sorry, I encountered an error.";
-            
-            if (error instanceof Error) {
-                if (error.message.includes('API_KEY')) {
-                    errorMessage = "API key error. Please check your Gemini API configuration.";
-                } else if (error.message.includes('quota')) {
-                    errorMessage = "API quota exceeded. Please try again later.";
-                } else if (error.message.includes('network')) {
-                    errorMessage = "Network error. Please check your internet connection.";
-                } else {
-                    errorMessage = `Error: ${error.message}`;
-                }
-            }
-            
-            const errorResponse: Chat = { sender: 'model', message: errorMessage };
+            console.error(error);
+            const errorResponse: Chat = { sender: 'model', message: "Sorry, I encountered an error." };
             setHistory(prev => [...prev, errorResponse]);
         } finally {
             setIsLoading(false);

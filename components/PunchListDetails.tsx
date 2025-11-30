@@ -69,7 +69,7 @@ const PunchListDetails: React.FC = () => {
                         value={newItemText}
                         onChange={(e) => setNewItemText(e.target.value)}
                         placeholder="Add new punch list item..."
-                        className="flex-grow block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        className="flex-grow block w-full rounded-md border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                     />
                     <Button type="submit">
                         <PlusIcon className="w-5 h-5 mr-2 -ml-1" />

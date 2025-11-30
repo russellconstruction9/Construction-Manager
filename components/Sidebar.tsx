@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { NavLink, Link } from 'react-router-dom';
-import { Building2Icon, ClipboardCheckIcon, ClockIcon, LayoutDashboardIcon, ListChecksIcon, UsersIcon, SccLogoIcon, PackageIcon, CalendarIcon, MapIcon, FileTextIcon } from './icons/Icons';
+import { Building2Icon, ClipboardCheckIcon, ClockIcon, LayoutDashboardIcon, ListChecksIcon, UsersIcon, R2LogoIcon, PackageIcon, CalendarIcon, MapIcon } from './icons/Icons';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboardIcon },
@@ -11,7 +12,6 @@ const navItems = [
   { path: '/team', label: 'Team', icon: UsersIcon },
   { path: '/time-tracking', label: 'Time Tracking', icon: ClockIcon },
   { path: '/punch-lists', label: 'Punch Lists', icon: ClipboardCheckIcon },
-  { path: '/invoicing', label: 'Invoicing', icon: FileTextIcon },
   { path: '/inventory', label: 'Inventory', icon: PackageIcon },
 ];
 
@@ -20,8 +20,8 @@ const Sidebar: React.FC = () => {
     <aside className="w-64 flex-shrink-0 bg-primary-navy flex flex-col">
       <div className="h-16 flex items-center justify-start px-4 border-b border-white/20">
         <Link to="/" className="flex items-center gap-3">
-          <SccLogoIcon className="w-8 h-8 text-blue-600" />
-          <span className="font-bold text-xl text-white">SCC</span>
+          <R2LogoIcon className="w-8 h-8 text-blue-400" />
+          <span className="font-bold text-lg text-white tracking-tight">R² Technologies</span>
         </Link>
       </div>
       <nav className="flex-1 p-4 space-y-2">

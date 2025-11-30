@@ -32,7 +32,7 @@ const TaskCard: React.FC<{ task: Task }> = React.memo(({ task }) => {
                 <select 
                   value={task.status} 
                   onChange={(e) => updateTaskStatus(task.id, e.target.value as TaskStatus)}
-                  className="text-sm font-semibold rounded-md border-slate-300 focus:ring-blue-600 focus:border-blue-600"
+                  className="text-sm font-semibold rounded-md border-gray-300 bg-white text-gray-900 focus:ring-blue-600 focus:border-blue-600"
                 >
                   <option>{TaskStatus.ToDo}</option>
                   <option>{TaskStatus.InProgress}</option>

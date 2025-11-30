@@ -40,7 +40,7 @@ const SwitchJobModal: React.FC<SwitchJobModalProps> = ({ isOpen, onClose }) => {
                     id="project" 
                     value={selectedProjectId} 
                     onChange={e => setSelectedProjectId(Number(e.target.value))} 
-                    className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                     required
                 >
                     <option value="" disabled>Choose a project...</option>

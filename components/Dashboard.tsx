@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState } from 'react';
 import Card from './Card';
 import { useData } from '../hooks/useDataContext';
@@ -5,219 +6,123 @@ import { TaskStatus } from '../types';
 import { isThisWeek } from 'date-fns';
 import { Link } from 'react-router-dom';
 import ProjectListItem from './ProjectListItem';
-import DataMigrationModal from './DataMigrationModal';
+import AddTeamMemberModal from './AddTeamMemberModal';
+import Button from './Button';
+import { PlusIcon } from './icons/Icons';
 
 const Dashboard: React.FC = () => {
-    const [showMigrationModal, setShowMigrationModal] = useState(false);
+    const { projects, tasks, users, currentUser, timeLogs } = useData();
+    const [isSetupOpen, setIsSetupOpen] = useState(false);
 
-    try {
-        const { projects, tasks, users, currentUser, timeLogs, isLoading, error } = useData();
-
-        if (isLoading) {
-            return (
-                <div className="text-center py-10">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                    <h1 className="text-2xl font-bold text-gray-800 mt-4">Loading Dashboard...</h1>
-                    <p className="mt-2 text-gray-600">Connecting to cloud database...</p>
-                </div>
-            );
-        }
-
-        if (error) {
-            return (
-                <div className="text-center py-10">
-                    <div className="text-red-500 mb-4">
-                        <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <h1 className="text-2xl font-bold text-gray-800">Error Loading Data</h1>
-                    <p className="mt-2 text-gray-600">{error}</p>
-                    <button 
-                        onClick={() => window.location.reload()}
-                        className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                    >
-                        Retry
-                    </button>
-                    <button 
-                        onClick={() => setShowMigrationModal(true)}
-                        className="mt-4 ml-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                    >
-                        Migrate Local Data
-                    </button>
-                </div>
-            );
-        }
-
-        if (!currentUser && users.length === 0) {
-            return (
-                <div className="text-center py-10">
-                    <h1 className="text-2xl font-bold text-gray-800">Welcome to ConstructTrack Pro</h1>
-                    <p className="mt-2 text-gray-600">Get started by adding your first team member.</p>
-                    <button 
-                        onClick={() => setShowMigrationModal(true)}
-                        className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                    >
-                        Import Local Data
-                    </button>
-                    <DataMigrationModal 
-                        isOpen={showMigrationModal} 
-                        onClose={() => setShowMigrationModal(false)} 
-                    />
-                </div>
-            );
-        }
-
-        // Time tracking data
-        const userTimeLogsThisWeek = useMemo(() => timeLogs.filter(log => 
-            log.userId === currentUser?.id && 
+    // Time tracking data
+    // Hooks must always be called in the same order. Do not return early before hooks.
+    const userTimeLogsThisWeek = useMemo(() => {
+        if (!currentUser) return [];
+        return timeLogs.filter(log => 
+            log.userId === currentUser.id && 
             log.clockOut && 
             isThisWeek(new Date(log.clockIn), { weekStartsOn: 1 })
-        ), [timeLogs, currentUser]);
-
-        const totalMsThisWeek = useMemo(() => userTimeLogsThisWeek.reduce((acc, log) => acc + (log.durationMs || 0), 0), [userTimeLogsThisWeek]);
-        
-        const hoursThisWeek = useMemo(() => (totalMsThisWeek / (1000 * 60 * 60)).toFixed(1), [totalMsThisWeek]);
-
-        const weeklyCost = useMemo(() => userTimeLogsThisWeek.reduce((acc, log) => acc + (log.cost || 0), 0), [userTimeLogsThisWeek]);
-        
-        // Task status counts
-        const { todoTasks, inProgressTasks, doneTasks } = useMemo(() => ({
-            todoTasks: tasks.filter(t => t.status === TaskStatus.ToDo).length,
-            inProgressTasks: tasks.filter(t => t.status === TaskStatus.InProgress).length,
-            doneTasks: tasks.filter(t => t.status === TaskStatus.Done).length,
-        }), [tasks]);
-
-        // Team status
-        const teamClockedIn = useMemo(() => users.filter(u => u.isClockedIn).length, [users]);
-        
-        const projectsInProgress = useMemo(() => projects.filter(p => p.status === 'In Progress'), [projects]);
-
-        return (
-            <>
-                <div className="space-y-6">
-                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
-                        {currentUser ? `Welcome back, ${currentUser.name.split(' ')[0]}!` : "Dashboard"}
-                    </h1>
-                
-                {/* Quick Stats */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <Card>
-                        <div className="text-center">
-                            <div className="text-2xl font-bold text-blue-600">{projects.length}</div>
-                            <div className="text-sm text-gray-600">Total Projects</div>
-                        </div>
-                    </Card>
-                    <Card>
-                        <div className="text-center">
-                            <div className="text-2xl font-bold text-green-600">{projectsInProgress.length}</div>
-                            <div className="text-sm text-gray-600">Active Projects</div>
-                        </div>
-                    </Card>
-                    <Card>
-                        <div className="text-center">
-                            <div className="text-2xl font-bold text-orange-600">{teamClockedIn}</div>
-                            <div className="text-sm text-gray-600">Team Clocked In</div>
-                        </div>
-                    </Card>
-                    <Card>
-                        <div className="text-center">
-                            <div className="text-2xl font-bold text-purple-600">{hoursThisWeek}h</div>
-                            <div className="text-sm text-gray-600">Hours This Week</div>
-                        </div>
-                    </Card>
-                </div>
-
-                {/* Task Overview */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <Card>
-                        <h2 className="text-xl font-bold mb-4">Task Overview</h2>
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center">
-                                <span className="text-gray-600">To Do</span>
-                                <span className="text-lg font-semibold text-gray-800">{todoTasks}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-gray-600">In Progress</span>
-                                <span className="text-lg font-semibold text-orange-600">{inProgressTasks}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-gray-600">Completed</span>
-                                <span className="text-lg font-semibold text-green-600">{doneTasks}</span>
-                            </div>
-                        </div>
-                    </Card>
-
-                    <Card>
-                        <h2 className="text-xl font-bold mb-4">This Week</h2>
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center">
-                                <span className="text-gray-600">Hours Worked</span>
-                                <span className="text-lg font-semibold text-blue-600">{hoursThisWeek}h</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-gray-600">Total Cost</span>
-                                <span className="text-lg font-semibold text-green-600">${weeklyCost.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-gray-600">Sessions</span>
-                                <span className="text-lg font-semibold text-purple-600">{userTimeLogsThisWeek.length}</span>
-                            </div>
-                        </div>
-                    </Card>
-
-                    <Card>
-                        <h2 className="text-xl font-bold mb-4">Team Status</h2>
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center">
-                                <span className="text-gray-600">Total Members</span>
-                                <span className="text-lg font-semibold text-gray-800">{users.length}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-gray-600">Currently Working</span>
-                                <span className="text-lg font-semibold text-green-600">{teamClockedIn}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-gray-600">Available</span>
-                                <span className="text-lg font-semibold text-gray-600">{users.length - teamClockedIn}</span>
-                            </div>
-                        </div>
-                    </Card>
-                </div>
-
-                <Card>
-                    <h2 className="text-xl font-bold mb-4">Projects Overview ({projectsInProgress.length})</h2>
-                    {projectsInProgress.length > 0 ? (
-                        <div className="space-y-4">
-                            {projectsInProgress.slice(0, 5).map(project => (
-                               <ProjectListItem key={project.id} project={project} />
-                            ))}
-                        </div>
-                    ) : <p className="text-gray-500">No projects are currently in progress.</p>}
-                </Card>
-            </div>
-
-            <DataMigrationModal 
-                isOpen={showMigrationModal} 
-                onClose={() => setShowMigrationModal(false)} 
-            />
-            </>
         );
-    } catch (error) {
-        console.error('Dashboard error:', error);
+    }, [timeLogs, currentUser]);
+
+    const totalMsThisWeek = useMemo(() => userTimeLogsThisWeek.reduce((acc, log) => acc + (log.durationMs || 0), 0), [userTimeLogsThisWeek]);
+    
+    const hoursThisWeek = useMemo(() => (totalMsThisWeek / (1000 * 60 * 60)).toFixed(1), [totalMsThisWeek]);
+
+    const weeklyCost = useMemo(() => userTimeLogsThisWeek.reduce((acc, log) => acc + (log.cost || 0), 0), [userTimeLogsThisWeek]);
+    
+    // Task status counts
+    const { todoTasks, inProgressTasks, doneTasks } = useMemo(() => ({
+        todoTasks: tasks.filter(t => t.status === TaskStatus.ToDo).length,
+        inProgressTasks: tasks.filter(t => t.status === TaskStatus.InProgress).length,
+        doneTasks: tasks.filter(t => t.status === TaskStatus.Done).length,
+    }), [tasks]);
+
+    // Team status
+    const teamClockedIn = useMemo(() => users.filter(u => u.isClockedIn).length, [users]);
+    
+    const projectsInProgress = useMemo(() => projects.filter(p => p.status === 'In Progress'), [projects]);
+
+    if (users.length === 0) {
         return (
-            <div className="text-center py-10">
-                <h1 className="text-2xl font-bold text-gray-800">Loading Dashboard...</h1>
-                <p className="mt-2 text-gray-600">Please wait while we load your data.</p>
-                <button 
-                    onClick={() => window.location.reload()}
-                    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                    Refresh Page
-                </button>
+            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6">
+                <h1 className="text-3xl font-bold text-gray-800 mb-2">Welcome to ConstructTrack Pro</h1>
+                <p className="text-gray-600 mb-8 max-w-md">
+                    Your workspace is ready. To get started, please create an administrator account for your organization.
+                </p>
+                <Button onClick={() => setIsSetupOpen(true)} className="px-8 py-3 text-lg">
+                    <PlusIcon className="w-5 h-5 mr-2" />
+                    Initialize Organization
+                </Button>
+                <AddTeamMemberModal isOpen={isSetupOpen} onClose={() => setIsSetupOpen(false)} />
             </div>
-        );
+        )
     }
-};
+
+    return (
+        <div className="space-y-6">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+                {currentUser ? `Welcome back, ${currentUser.name.split(' ')[0]}!` : "Dashboard"}
+            </h1>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <Link to="/time-tracking" className="block hover:shadow-lg transition-shadow duration-200 rounded-xl">
+                    <Card className="h-full">
+                        <h3 className="text-lg font-bold text-gray-800">Hours This Week</h3>
+                        <p className="mt-2 text-4xl font-semibold text-blue-600">{hoursThisWeek}</p>
+                        <p className="text-sm font-medium text-gray-500">Total Cost: ${weeklyCost.toFixed(2)}</p>
+                    </Card>
+                </Link>
+                 <Link to="/tasks" className="block hover:shadow-lg transition-shadow duration-200 rounded-xl">
+                    <Card className="h-full">
+                        <h3 className="text-lg font-bold text-gray-800">Task Status</h3>
+                        <div className="mt-2 space-y-2">
+                           <div className="flex justify-between items-center">
+                                <span className="flex items-center text-sm font-medium text-gray-600">
+                                    <span className="w-2 h-2 rounded-full bg-slate-400 mr-2"></span> To Do
+                                </span>
+                                <span className="font-semibold text-gray-800">{todoTasks}</span>
+                           </div>
+                            <div className="flex justify-between items-center">
+                                <span className="flex items-center text-sm font-medium text-amber-600">
+                                    <span className="w-2 h-2 rounded-full bg-amber-400 mr-2"></span> In Progress
+                                </span>
+                                <span className="font-semibold text-gray-800">{inProgressTasks}</span>
+                           </div>
+                           <div className="flex justify-between items-center">
+                                <span className="flex items-center text-sm font-medium text-green-600">
+                                    <span className="w-2 h-2 rounded-full bg-green-500 mr-2"></span> Done
+                                </span>
+                                <span className="font-semibold text-gray-800">{doneTasks}</span>
+                           </div>
+                        </div>
+                    </Card>
+                </Link>
+                <Link to="/team" className="block hover:shadow-lg transition-shadow duration-200 rounded-xl">
+                    <Card className="h-full">
+                        <h3 className="text-lg font-bold text-gray-800">Active Team</h3>
+                        <p className="mt-2 text-4xl font-semibold text-blue-600">
+                            {teamClockedIn} <span className="text-2xl text-gray-500">/ {users.length}</span>
+                        </p>
+                        <p className={`text-sm font-semibold ${currentUser?.isClockedIn ? 'text-green-600' : 'text-gray-500'}`}>
+                           You are {currentUser?.isClockedIn ? 'Clocked In' : 'Clocked Out'}
+                        </p>
+                    </Card>
+                </Link>
+            </div>
+
+            <Card>
+                <h2 className="text-xl font-bold mb-4">Projects Overview ({projectsInProgress.length})</h2>
+                {projectsInProgress.length > 0 ? (
+                    <div className="space-y-4">
+                        {projectsInProgress.slice(0, 5).map(project => (
+                           <ProjectListItem key={project.id} project={project} />
+                        ))}
+                    </div>
+                ) : <p className="text-gray-500">No projects are currently in progress.</p>}
+            </Card>
+        </div>
+    );
+}
 
 export default Dashboard;

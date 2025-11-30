@@ -1,5 +1,3 @@
-import { GoogleGenAI, GenerateContentResponse, Chat as GeminiChat, FunctionDeclaration, Type } from '@google/genai';
-
 
 export enum TaskStatus {
   ToDo = 'To Do',
@@ -14,6 +12,8 @@ export enum ProjectType {
   InteriorFitOut = "Interior Fit-Out",
 }
 
+export type UserRole = 'Admin' | 'Employee';
+
 export interface Location {
   lat: number;
   lng: number;
@@ -22,14 +22,13 @@ export interface Location {
 export interface User {
   id: number;
   name: string;
-  role: string;
+  role: string; // Job Title
+  roleType: UserRole; // Permission Level
   avatarUrl: string;
   isClockedIn: boolean;
   hourlyRate: number;
   clockInTime?: Date;
   currentProjectId?: number;
-  email?: string;
-  phone?: string;
 }
 
 export interface PunchListItem {
@@ -50,36 +49,29 @@ export interface Project {
   name: string;
   address: string;
   type: ProjectType;
-  status: 'Planning' | 'In Progress' | 'Completed' | 'On Hold';
+  status: 'In Progress' | 'Completed' | 'On Hold';
   startDate: Date;
   endDate: Date;
   budget: number;
+  currentSpend: number; // Deprecated in favor of calculated actuals from Job Costing
   punchList: PunchListItem[];
   photos: ProjectPhoto[];
-  description?: string;
-  progressPercentage?: number;
-  clientName?: string;
-  clientEmail?: string;
-  clientPhone?: string;
 }
 
 export interface Task {
   id: number;
   title: string;
   description: string;
-  projectId?: number;
-  assignedTo?: number;
-  dueDate?: Date;
+  projectId: number;
+  assigneeId: number;
+  dueDate: Date;
   status: TaskStatus;
-  priority?: string;
-  estimatedHours?: number;
-  actualHours?: number;
 }
 
 export interface TimeLog {
   id: number;
   userId: number;
-  projectId?: number;
+  projectId: number;
   clockIn: Date;
   clockOut?: Date;
   durationMs?: number;
@@ -88,21 +80,14 @@ export interface TimeLog {
   clockOutLocation?: Location;
   clockInMapImage?: string;
   clockOutMapImage?: string;
-  invoiceId?: number;
-  notes?: string;
 }
 
 export interface InventoryItem {
   id: number;
   name: string;
-  description: string;
   quantity: number;
   unit: string;
-  costPerUnit: number;
-  supplier: string;
-  category: string;
-  location: string;
-  minQuantity: number;
+  lowStockThreshold?: number;
 }
 
 export interface InventoryOrderItem {
@@ -113,8 +98,7 @@ export interface InventoryOrderItem {
 export interface ManualOrderItem {
   type: 'manual';
   id: number;
-  name:string;
-  cost?: number;
+  name: string;
 }
 
 export type OrderListItem = InventoryOrderItem | ManualOrderItem;
@@ -126,43 +110,38 @@ export interface Chat {
   toolResponse?: any;
 }
 
-// New Invoicing Types
-export interface InvoiceLineItem {
-  id: string; // Use a UUID-like string for client-side key
-  description: string;
-  quantity: number;
-  rate: number;
-  amount: number;
-  timeLogIds?: number[];
+// --- NEW ESTIMATING & JOB COSTING TYPES ---
+
+export type EstimateItemType = 'Labor' | 'Material' | 'Subcontractor' | 'Equipment' | 'Other';
+
+export interface EstimateItem {
+    id: number;
+    type: EstimateItemType;
+    description: string;
+    quantity: number;
+    unit: string;
+    unitCost: number;
+    totalCost: number;
+    estimatedHours?: number; // Only for Labor
 }
 
-export enum InvoiceStatus {
-  Draft = 'Draft',
-  Sent = 'Sent',
-  Paid = 'Paid',
-  Overdue = 'Overdue',
-}
-
-export interface Invoice {
-  id: number;
-  invoiceNumber: string;
-  projectId: number;
-  dateIssued: Date;
-  dueDate: Date;
-  status: InvoiceStatus;
-  lineItems: InvoiceLineItem[];
-  notes?: string;
-  subtotal: number;
-  taxRate: number; // Store as percentage, e.g., 5 for 5%
-  taxAmount: number;
-  total: number;
+export interface Estimate {
+    id: number;
+    projectId: number;
+    name: string;
+    dateCreated: Date;
+    status: 'Draft' | 'Approved' | 'Rejected';
+    items: EstimateItem[];
+    totalAmount: number;
+    totalEstimatedHours: number;
 }
 
 export interface Expense {
-  id: number;
-  projectId: number;
-  description: string;
-  amount: number;
-  date: Date;
-  vendor?: string;
+    id: number;
+    projectId: number;
+    description: string;
+    amount: number;
+    date: Date;
+    category: EstimateItemType;
+    receiptUrl?: string; // Optional future feature
 }

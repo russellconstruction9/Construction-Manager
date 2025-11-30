@@ -1,23 +1,27 @@
+
 import React, { useState } from 'react';
 import { useData } from '../hooks/useDataContext';
 import Button from './Button';
 import { PlusIcon } from './icons/Icons';
 import AddProjectModal from './AddProjectModal';
 import EmptyState from './EmptyState';
-import ProjectListItem from './ProjectListItem'; // Import the new reusable component
+import ProjectListItem from './ProjectListItem';
 
 const Projects: React.FC = () => {
-    const { projects } = useData();
+    const { projects, currentUser } = useData();
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const isAdmin = currentUser?.roleType === 'Admin';
 
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Projects</h1>
-                <Button onClick={() => setIsModalOpen(true)}>
-                    <PlusIcon className="w-5 h-5 mr-2 -ml-1" />
-                    New Project
-                </Button>
+                {isAdmin && (
+                    <Button onClick={() => setIsModalOpen(true)}>
+                        <PlusIcon className="w-5 h-5 mr-2 -ml-1" />
+                        New Project
+                    </Button>
+                )}
             </div>
 
             {projects.length > 0 ? (

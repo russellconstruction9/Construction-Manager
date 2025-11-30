@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useData } from '../hooks/useDataContext';
 import Card from './Card';
@@ -41,7 +42,7 @@ const Profile: React.FC = () => {
             hourlyRate: Number(hourlyRate),
         });
         setIsSaved(true);
-        setTimeout(() => setIsSaved(false), 3000); // Hide message after 3 seconds
+        setTimeout(() => setIsSaved(false), 3000);
     };
     
     const isFormChanged = currentUser.name !== name || currentUser.role !== role || currentUser.hourlyRate !== Number(hourlyRate);
@@ -70,7 +71,7 @@ const Profile: React.FC = () => {
                             id="name"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                            className="mt-1 block w-full rounded-md border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                             required
                         />
                     </div>
@@ -81,7 +82,7 @@ const Profile: React.FC = () => {
                             id="role"
                             value={role}
                             onChange={(e) => setRole(e.target.value)}
-                            className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                            className="mt-1 block w-full rounded-md border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                             required
                         />
                     </div>
@@ -96,7 +97,7 @@ const Profile: React.FC = () => {
                                 id="hourlyRate"
                                 value={hourlyRate}
                                 onChange={(e) => setHourlyRate(e.target.value)}
-                                className="block w-full rounded-md border-slate-300 pl-7 pr-12 focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                className="block w-full rounded-md border-gray-300 bg-white text-gray-900 pl-7 pr-12 focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                                 placeholder="0.00"
                                 min="0"
                                 step="0.01"

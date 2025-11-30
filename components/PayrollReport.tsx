@@ -1,7 +1,8 @@
+
 import React, { useEffect } from 'react';
 import { User, TimeLog, Project, Location } from '../types';
 import { format } from 'date-fns';
-import { SccLogoIcon } from './icons/Icons';
+import { R2LogoIcon } from './icons/Icons';
 
 interface PayrollReportProps {
     user: User;
@@ -103,8 +104,8 @@ const PayrollReport: React.FC<PayrollReportProps> = ({ user, logs, projects, wee
                     <p className="text-lg text-gray-600">For Payroll Processing</p>
                 </div>
                  <div className="text-right">
-                    <SccLogoIcon className="w-16 h-16 text-primary-navy" />
-                    <p className="font-bold text-primary-navy mt-1">SCC</p>
+                    <R2LogoIcon className="w-16 h-16 text-primary-navy" />
+                    <p className="font-bold text-primary-navy mt-1">R²</p>
                 </div>
             </header>
 

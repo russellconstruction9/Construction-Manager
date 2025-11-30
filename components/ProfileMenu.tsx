@@ -77,7 +77,7 @@ const ProfileMenu: React.FC = () => {
                         id="user-switcher"
                         value={currentUser?.id || ''}
                         onChange={handleUserChange}
-                        className="mt-1 block w-full text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        className="mt-1 block w-full text-sm text-gray-700 bg-white border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500"
                     >
                         <option value="" disabled>Select user...</option>
                         {users.map(user => (

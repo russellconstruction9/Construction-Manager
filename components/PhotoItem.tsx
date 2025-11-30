@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { getPhoto } from '../utils/db';
-import { CameraIcon } from './icons/Icons';
+import { CameraIcon, AlertTriangleIcon } from './icons/Icons';
 
 interface PhotoItemProps {
     projectId: number;
@@ -11,16 +12,27 @@ interface PhotoItemProps {
 const PhotoItem: React.FC<PhotoItemProps> = ({ projectId, photo, className }) => {
     const [imageUrl, setImageUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [hasError, setHasError] = useState(false);
 
     useEffect(() => {
         let isMounted = true;
+        setHasError(false);
+        setIsLoading(true);
+
         getPhoto(projectId, photo.id).then(url => {
             if (isMounted) {
-                setImageUrl(url);
+                if (url) {
+                    setImageUrl(url);
+                } else {
+                    // ID exists in project metadata but not in DB
+                    setHasError(true);
+                }
                 setIsLoading(false);
             }
-        }).catch(() => {
+        }).catch((err) => {
+            console.error("Error loading photo component:", err);
             if (isMounted) {
+                setHasError(true);
                 setIsLoading(false);
             }
         });
@@ -35,15 +47,23 @@ const PhotoItem: React.FC<PhotoItemProps> = ({ projectId, photo, className }) =>
         );
     }
     
-    if (!imageUrl) {
+    if (hasError || !imageUrl) {
         return (
-             <div className={`flex items-center justify-center bg-gray-100 text-gray-500 text-sm text-center p-2 ${className}`}>
-                <p>Image not found</p>
+             <div className={`flex flex-col items-center justify-center bg-gray-100 text-gray-500 text-xs text-center p-2 border border-gray-200 ${className}`}>
+                <AlertTriangleIcon className="w-8 h-8 text-gray-400 mb-1" />
+                <p>Image not available</p>
             </div>
         );
     }
 
-    return <img src={imageUrl} alt={photo.description} className={className} />;
+    return (
+        <img 
+            src={imageUrl} 
+            alt={photo.description} 
+            className={className}
+            onError={() => setHasError(true)} 
+        />
+    );
 }
 
 export default PhotoItem;

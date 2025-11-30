@@ -143,7 +143,7 @@ const ChatAgent: React.FC = () => {
                                 onChange={(e) => setInput(e.target.value)}
                                 onKeyPress={handleKeyPress}
                                 placeholder="Ask me anything..."
-                                className="flex-1 w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="flex-1 w-full px-4 py-2 border border-gray-300 rounded-full bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 disabled={isLoading}
                             />
                             <button

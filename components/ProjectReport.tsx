@@ -1,10 +1,11 @@
+
 import React, { useEffect } from 'react';
 import { Project, Task, TimeLog, User } from '../types';
 import { format } from 'date-fns';
-import { SccLogoIcon } from './icons/Icons';
+import { R2LogoIcon } from './icons/Icons';
 
 interface ReportData {
-    project: Project & { currentSpend: number };
+    project: Project;
     tasks: Task[];
     timeLogs: TimeLog[];
     photos: { id: number; url: string; description: string; dateAdded: Date; }[];
@@ -56,8 +57,8 @@ const ProjectReport: React.FC<ReportData> = ({ project, tasks, timeLogs, photos,
                     <p className="text-lg text-gray-600">Project Status Report</p>
                 </div>
                 <div className="text-right">
-                    <SccLogoIcon className="w-16 h-16 text-primary-navy" />
-                    <p className="font-bold text-primary-navy mt-1">SCC</p>
+                    <R2LogoIcon className="w-16 h-16 text-primary-navy" />
+                    <p className="font-bold text-primary-navy mt-1">R²</p>
                 </div>
             </header>
             <div className="flex justify-between text-sm mt-2 mb-8 text-gray-500">

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Card from './Card';
 import Button from './Button';
@@ -107,7 +108,7 @@ const TimeTracking: React.FC = () => {
                                 <select 
                                     value={selectedProjectId}
                                     onChange={(e) => setSelectedProjectId(Number(e.target.value))}
-                                    className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                    className="block w-full rounded-md border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                                     disabled={projects.length === 0}
                                 >
                                     <option value="" disabled>{projects.length > 0 ? 'Select a project...' : 'Add a project first'}</option>
@@ -125,14 +126,9 @@ const TimeTracking: React.FC = () => {
 
                         {currentUser.isClockedIn && currentUser.clockInTime && (
                             <div className="my-4">
-                                {activeProject && (
-                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center mb-4">
-                                        <p className="text-sm text-gray-500">Currently on:</p>
-                                        <p className="text-lg font-bold text-primary-navy">{activeProject.name}</p>
-                                    </div>
-                                )}
-                                <p className="text-4xl font-mono font-bold">{elapsedTime}</p>
-                                <p className="text-sm text-gray-500 mt-1">
+                                {activeProject && <p className="font-semibold text-gray-700">Project: {activeProject.name}</p>}
+                                <p className="text-4xl font-mono font-bold mt-2">{elapsedTime}</p>
+                                <p className="text-sm text-gray-500">
                                     Clocked in at {format(currentUser.clockInTime, 'p')}
                                 </p>
                                 <div className="mt-6 flex flex-col sm:flex-row gap-2">
@@ -165,9 +161,10 @@ const TimeTracking: React.FC = () => {
                                         <tr>
                                             <th scope="col" className="px-4 py-3">Date</th>
                                             <th scope="col" className="px-4 py-3">Project</th>
+                                            <th scope="col" className="px-4 py-3">Clock In</th>
+                                            <th scope="col" className="px-4 py-3">Clock Out</th>
                                             <th scope="col" className="px-4 py-3">Duration</th>
                                             <th scope="col" className="px-4 py-3">Cost</th>
-                                            <th scope="col" className="px-4 py-3">Status</th>
                                             <th scope="col" className="px-4 py-3">In Map</th>
                                             <th scope="col" className="px-4 py-3">Out Map</th>
                                         </tr>
@@ -179,19 +176,10 @@ const TimeTracking: React.FC = () => {
                                                 <tr key={log.id} className="bg-white border-b">
                                                     <td className="px-4 py-4 font-medium text-gray-900 whitespace-nowrap">{format(log.clockIn, 'MMM d, yyyy')}</td>
                                                     <td className="px-4 py-4 font-medium text-gray-900">{project?.name || 'N/A'}</td>
+                                                    <td className="px-4 py-4">{format(log.clockIn, 'p')}</td>
+                                                    <td className="px-4 py-4">{log.clockOut ? format(log.clockOut, 'p') : '-'}</td>
                                                     <td className="px-4 py-4">{log.durationMs ? formatDuration(log.durationMs) : '-'}</td>
                                                     <td className="px-4 py-4 font-medium text-gray-800">{log.cost ? `$${log.cost.toFixed(2)}` : '-'}</td>
-                                                    <td className="px-4 py-4">
-                                                        {log.invoiceId ? (
-                                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                                Billed
-                                                            </span> 
-                                                        ) : (
-                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                                                Unbilled
-                                                            </span>
-                                                        )}
-                                                    </td>
                                                     <td className="px-4 py-4"><MapImage location={log.clockInLocation} imageUrl={log.clockInMapImage} /></td>
                                                     <td className="px-4 py-4"><MapImage location={log.clockOutLocation} imageUrl={log.clockOutMapImage} /></td>
                                                 </tr>

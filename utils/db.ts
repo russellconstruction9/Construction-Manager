@@ -1,11 +1,15 @@
+
 const DB_NAME = 'ConstructTrackProDB';
 const STORE_NAME = 'photos';
 let db: IDBDatabase | null = null;
 
 const initDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
-    // If db is already initialized, resolve it
     if (db) return resolve(db);
+
+    if (!window.indexedDB) {
+        return reject(new Error("IndexedDB is not supported in this browser."));
+    }
 
     const request = indexedDB.open(DB_NAME, 1);
 
@@ -39,13 +43,35 @@ export const setPhoto = (projectId: number, photoId: number, imageDataUrl: strin
             const db = await getDB();
             const transaction = db.transaction([STORE_NAME], 'readwrite');
             const store = transaction.objectStore(STORE_NAME);
+            
+            if (!imageDataUrl || imageDataUrl.length < 10) {
+                return reject(new Error("Invalid image data"));
+            }
+
             const request = store.put(imageDataUrl, `${projectId}-${photoId}`);
 
             request.onsuccess = () => resolve();
-            request.onerror = () => {
-                console.error('Error saving photo:', request.error);
-                reject(request.error);
+            
+            request.onerror = (event) => {
+                const error = (event.target as IDBRequest).error;
+                if (error && (error.name === 'QuotaExceededError' || error.code === 22)) {
+                    console.error('Storage quota exceeded');
+                    reject(new Error('Storage quota exceeded'));
+                } else {
+                    console.error('Error saving photo:', error);
+                    reject(error || new Error('Unknown DB Error'));
+                }
             };
+            
+            transaction.onabort = (event) => {
+                 const error = (event.target as IDBTransaction).error;
+                 if (error && (error.name === 'QuotaExceededError' || error.code === 22)) {
+                     reject(new Error('Storage quota exceeded'));
+                 } else {
+                     reject(error || new Error('Transaction aborted'));
+                 }
+            };
+
         } catch (error) {
             reject(error);
         }
@@ -65,10 +91,11 @@ export const getPhoto = (projectId: number, photoId: number): Promise<string | n
             };
             request.onerror = () => {
                 console.error('Error getting photo:', request.error);
-                reject(request.error);
+                resolve(null);
             };
         } catch (error) {
-            reject(error);
+            console.error('Failed to open DB for reading photo', error);
+            resolve(null);
         }
     });
 };
@@ -83,29 +110,29 @@ export const getPhotosForProject = (
             const transaction = db.transaction([STORE_NAME], 'readonly');
             const store = transaction.objectStore(STORE_NAME);
             const photoPromises = photoMetas.map(meta => {
-                return new Promise((resolvePhoto, rejectPhoto) => {
+                return new Promise((resolvePhoto) => {
                     const request = store.get(`${projectId}-${meta.id}`);
                     request.onsuccess = () => {
                         if (request.result) {
                             resolvePhoto({ ...meta, url: request.result });
                         } else {
-                            // Resolve with null if a specific photo is not found
+                            // Missing binary data for existing metadata
                             resolvePhoto(null); 
                         }
                     };
                     request.onerror = () => {
                          console.error(`Error getting photo ${meta.id}:`, request.error);
-                         rejectPhoto(request.error);
+                         resolvePhoto(null);
                     };
                 });
             });
             
             const photos = await Promise.all(photoPromises);
-            // Filter out any null results where a photo might have been missing from DB
             resolve(photos.filter(p => p !== null) as { id: number; url: string; description: string; dateAdded: Date; }[]);
 
         } catch (error) {
-            reject(error);
+            console.error("Failed to load photos from DB:", error);
+            resolve([]); 
         }
     });
 };

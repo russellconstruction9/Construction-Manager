@@ -1,67 +1,78 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import Button from './Button';
 import { useData } from '../hooks/useDataContext';
-import { UserRole } from '../types';
+import { User, UserRole } from '../types';
 
-interface AddTeamMemberModalProps {
+interface EditTeamMemberModalProps {
   isOpen: boolean;
   onClose: () => void;
+  user: User | null;
 }
 
-const AddTeamMemberModal: React.FC<AddTeamMemberModalProps> = ({ isOpen, onClose }) => {
+const EditTeamMemberModal: React.FC<EditTeamMemberModalProps> = ({ isOpen, onClose, user }) => {
   const [name, setName] = useState('');
-  const [role, setRole] = useState('');
-  const [roleType, setRoleType] = useState<UserRole>('Employee');
+  const [role, setRole] = useState(''); // Job Title
+  const [roleType, setRoleType] = useState<UserRole>('Employee'); // Permissions
   const [hourlyRate, setHourlyRate] = useState('');
-  const { addUser } = useData();
+  const { updateUser } = useData();
+
+  useEffect(() => {
+    if (user) {
+      setName(user.name);
+      setRole(user.role);
+      setRoleType(user.roleType || 'Employee');
+      setHourlyRate(user.hourlyRate.toString());
+    }
+  }, [user]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !role || !hourlyRate) {
+    if (!user || !name || !role || !hourlyRate) {
       alert('Please fill in all fields.');
       return;
     }
-    addUser({ name, role, roleType, hourlyRate: Number(hourlyRate) });
-    setName('');
-    setRole('');
-    setRoleType('Employee');
-    setHourlyRate('');
+    updateUser(user.id, { 
+        name, 
+        role, 
+        roleType, 
+        hourlyRate: Number(hourlyRate) 
+    });
     onClose();
   };
 
+  if (!user) return null;
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Add New Team Member">
+    <Modal isOpen={isOpen} onClose={onClose} title="Edit Team Member">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700">Full Name</label>
+          <label htmlFor="editName" className="block text-sm font-medium text-gray-700">Full Name</label>
           <input
             type="text"
-            id="name"
+            id="editName"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-            placeholder="e.g., Jane Smith"
             required
           />
         </div>
         <div>
-          <label htmlFor="role" className="block text-sm font-medium text-gray-700">Job Title / Role</label>
+          <label htmlFor="editRole" className="block text-sm font-medium text-gray-700">Job Title / Role</label>
           <input
             type="text"
-            id="role"
+            id="editRole"
             value={role}
             onChange={(e) => setRole(e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-            placeholder="e.g., Lead Electrician"
             required
           />
         </div>
         <div>
-            <label htmlFor="roleType" className="block text-sm font-medium text-gray-700">Permission Level</label>
+            <label htmlFor="editRoleType" className="block text-sm font-medium text-gray-700">Permission Level</label>
             <select
-                id="roleType"
+                id="editRoleType"
                 value={roleType}
                 onChange={(e) => setRoleType(e.target.value as UserRole)}
                 className="mt-1 block w-full rounded-md border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
@@ -69,36 +80,33 @@ const AddTeamMemberModal: React.FC<AddTeamMemberModalProps> = ({ isOpen, onClose
                 <option value="Employee">Employee (Limited Access)</option>
                 <option value="Admin">Admin (Full Access)</option>
             </select>
+            <p className="mt-1 text-xs text-gray-500">Admins can create projects, see financials, and manage the team.</p>
         </div>
         <div>
-            <label htmlFor="hourlyRate" className="block text-sm font-medium text-gray-700">Hourly Rate ($)</label>
+            <label htmlFor="editHourlyRate" className="block text-sm font-medium text-gray-700">Hourly Rate ($)</label>
             <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                     <span className="text-gray-500 sm:text-sm">$</span>
                 </div>
                 <input
                     type="number"
-                    id="hourlyRate"
+                    id="editHourlyRate"
                     value={hourlyRate}
                     onChange={(e) => setHourlyRate(e.target.value)}
                     className="block w-full rounded-md border-gray-300 bg-white text-gray-900 pl-7 pr-12 focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                    placeholder="0.00"
                     min="0"
                     step="0.01"
                     required
                 />
-                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-                    <span className="text-gray-500 sm:text-sm" id="price-currency">USD</span>
-                </div>
             </div>
         </div>
         <div className="flex justify-end space-x-3 pt-4">
             <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
-            <Button type="submit">Add Member</Button>
+            <Button type="submit">Save Changes</Button>
         </div>
       </form>
     </Modal>
   );
 };
 
-export default AddTeamMemberModal;
+export default EditTeamMemberModal;

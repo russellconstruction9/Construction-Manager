@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import Button from './Button';
@@ -56,29 +57,29 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, projectId:
         )}
         <div>
           <label htmlFor="taskTitle" className="block text-sm font-medium text-gray-700">Title</label>
-          <input type="text" id="taskTitle" value={title} onChange={e => setTitle(e.target.value)} className="mt-1 block w-full rounded-md border-slate-300" required disabled={!canSubmit} />
+          <input type="text" id="taskTitle" value={title} onChange={e => setTitle(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500 sm:text-sm" required disabled={!canSubmit} />
         </div>
         <div>
           <label htmlFor="taskDescription" className="block text-sm font-medium text-gray-700">Description</label>
-          <textarea id="taskDescription" value={description} onChange={e => setDescription(e.target.value)} rows={3} className="mt-1 block w-full rounded-md border-slate-300" disabled={!canSubmit}></textarea>
+          <textarea id="taskDescription" value={description} onChange={e => setDescription(e.target.value)} rows={3} className="mt-1 block w-full rounded-md border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500 sm:text-sm" disabled={!canSubmit}></textarea>
         </div>
         <div>
             <label htmlFor="project" className="block text-sm font-medium text-gray-700">Project</label>
-            <select id="project" value={projectId} onChange={e => setProjectId(Number(e.target.value))} className="mt-1 block w-full rounded-md border-slate-300" required disabled={!canSubmit || !!defaultProjectId}>
+            <select id="project" value={projectId} onChange={e => setProjectId(Number(e.target.value))} className="mt-1 block w-full rounded-md border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500 sm:text-sm" required disabled={!canSubmit || !!defaultProjectId}>
                 <option value="" disabled>Select a project</option>
                 {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
         </div>
         <div>
             <label htmlFor="assignee" className="block text-sm font-medium text-gray-700">Assignee</label>
-            <select id="assignee" value={assigneeId} onChange={e => setAssigneeId(Number(e.target.value))} className="mt-1 block w-full rounded-md border-slate-300" required disabled={!canSubmit}>
+            <select id="assignee" value={assigneeId} onChange={e => setAssigneeId(Number(e.target.value))} className="mt-1 block w-full rounded-md border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500 sm:text-sm" required disabled={!canSubmit}>
                 <option value="" disabled>Select an assignee</option>
                 {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
             </select>
         </div>
         <div>
             <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700">Due Date</label>
-            <input type="date" id="dueDate" value={dueDate} onChange={e => setDueDate(e.target.value)} className="mt-1 block w-full rounded-md border-slate-300" required disabled={!canSubmit} />
+            <input type="date" id="dueDate" value={dueDate} onChange={e => setDueDate(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500 sm:text-sm" required disabled={!canSubmit} />
         </div>
 
         <div className="flex justify-end space-x-3 pt-4">

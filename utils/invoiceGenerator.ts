@@ -1,7 +1,16 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { Invoice, Project } from '../types';
-import InvoicePDF from '../components/InvoicePDF';
+import { GoogleGenAI } from '@google/genai';
+import { Project, TimeLog } from '../types';
+import Invoice from '../components/Invoice';
+import { format } from 'date-fns';
+
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+interface InvoiceData {
+    project: Project;
+    timeLogs: TimeLog[];
+}
 
 // Helper to dynamically load scripts and wait for them to be ready.
 const scriptPromises = new Map<string, Promise<void>>();
@@ -43,25 +52,57 @@ const checkPdfLibraries = async (): Promise<void> => {
     }
 };
 
-export const generateInvoicePdf = async (invoice: Invoice, project: Project) => {
+
+const getInvoiceSummary = async (data: InvoiceData): Promise<string> => {
+    const { project, timeLogs } = data;
+
+    const totalLaborCost = timeLogs.reduce((acc, log) => acc + (log.cost || 0), 0);
+    const materialsAndOtherCost = project.currentSpend - totalLaborCost;
+    const totalHours = timeLogs.reduce((acc, log) => acc + (log.durationMs || 0), 0) / (1000 * 60 * 60);
+
+    const prompt = `
+        You are an AI assistant for a construction company. Write a brief, polite, and professional note to the client for an invoice.
+        The note should summarize the work completed and express appreciation for their business.
+        Keep it concise, around 2-3 sentences. Format the output as a clean HTML paragraph (<p>). Do not include markdown or a title.
+
+        **Project & Cost Details:**
+        - Client/Project Name: ${project.name}
+        - Total Amount Due: $${project.currentSpend.toFixed(2)}
+        - Breakdown: $${totalLaborCost.toFixed(2)} in Labor (${totalHours.toFixed(2)} hours), $${materialsAndOtherCost.toFixed(2)} in Materials & Other Costs.
+
+        Now, write the client-facing note.
+    `;
+
     try {
-        await checkPdfLibraries();
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: [{ parts: [{ text: prompt }] }],
+        });
+        
+        return response.text || '<p>Thank you for your business. Please find the cost breakdown attached.</p>';
     } catch (error) {
-        console.error(error);
-        alert((error as Error).message || "PDF generation libraries are not available. Please check your internet connection and try again.");
-        return;
+        console.error("Error calling Gemini API for invoice summary:", error);
+        return "<p>Thank you for your business. If you have any questions about this invoice, please don't hesitate to reach out.</p>";
     }
+}
+
+export const generateInvoice = async (data: InvoiceData) => {
+    const { project } = data;
+
+    await checkPdfLibraries();
+    
+    const summary = await getInvoiceSummary(data);
 
     const container = document.createElement('div');
     container.style.position = 'absolute';
     container.style.left = '-9999px';
-    container.style.width = '210mm';
+    container.style.width = '210mm'; // A4 width
     document.body.appendChild(container);
 
     const root = ReactDOM.createRoot(container);
     
     await new Promise<void>(resolve => {
-        root.render(React.createElement(InvoicePDF, { invoice, project, onRendered: resolve }));
+        root.render(React.createElement(Invoice, { ...data, summary, onRendered: resolve }));
     });
     
     // @ts-ignore
@@ -84,20 +125,10 @@ export const generateInvoicePdf = async (invoice: Invoice, project: Project) => 
     });
 
     const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pageContentHeight = canvas.height * (pdfWidth / canvas.width);
-    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+    
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
 
-    let position = 0;
-    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pageContentHeight);
-    let heightLeft = pageContentHeight - pdfHeight;
-
-    while (heightLeft > 0) {
-      position = heightLeft - pageContentHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pageContentHeight);
-      heightLeft -= pdfHeight;
-    }
-
-    const filename = `Invoice_${invoice.invoiceNumber}_${project.name.replace(/[^a-z0-9]/gi, '_')}.pdf`;
+    const filename = `Invoice_${project.name.replace(/[^a-z0-9]/gi, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
     pdf.save(filename);
 };
