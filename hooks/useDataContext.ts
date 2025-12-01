@@ -4,7 +4,7 @@ import { Project, Task, User, TimeLog, TaskStatus, Location, PunchListItem, Proj
 import { setPhoto } from '../utils/db';
 import { addDays, subDays } from 'date-fns';
 
-const GOOGLE_MAPS_API_KEY = 'AIzaSyAyS8VmIL-AbFnpm_xmuKZ-XG8AmSA03AM';
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string;
 
 const reviver = (key: string, value: any) => {
     if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)) {

@@ -9,7 +9,18 @@ interface ProjectLocation {
     lng: number;
 }
 
-const GOOGLE_MAPS_API_KEY = 'AIzaSyAyS8VmIL-AbFnpm_xmuKZ-XG8AmSA03AM'; // TODO: Move to environment variables
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string;
+
+// Load Google Maps script dynamically
+const loadGoogleMapsScript = () => {
+    if (typeof window !== 'undefined' && !(window as any).google) {
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=marker`;
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+    }
+};
 
 const MapView: React.FC = () => {
     const { projects } = useData();
@@ -20,6 +31,10 @@ const MapView: React.FC = () => {
     // Use `any` for Google Maps types as the 'google' namespace is not defined globally.
     const googleMapRef = useRef<any | null>(null);
     const markersRef = useRef<any[]>([]);
+
+    useEffect(() => {
+        loadGoogleMapsScript();
+    }, []);
 
     useEffect(() => {
         const geocodeCache: Record<string, ProjectLocation> = {};
