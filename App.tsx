@@ -1,9 +1,10 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './hooks/useAuth';
+import { AuthProvider, useAuth } from './hooks/useAuth';
 import { SupabaseProvider } from './hooks/useSupabase';
 import { DataProvider } from './hooks/useDataContext';
 import Layout from './components/Layout';
+import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import Projects from './components/Projects';
 import ProjectDetails from './components/ProjectDetails';
@@ -18,15 +19,30 @@ import Profile from './components/Profile';
 import Schedule from './components/Schedule';
 import MapView from './components/MapView';
 
+const AuthenticatedApp: React.FC = () => {
+  const { user, loading } = useAuth();
 
-const App: React.FC = () => {
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-navy mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Login />;
+  }
+
   return (
-    <AuthProvider>
-      <SupabaseProvider>
-        <DataProvider>
-          <Layout>
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
+    <SupabaseProvider>
+      <DataProvider>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
               <Route path="/projects" element={<Projects />} />
               <Route path="/projects/:projectId" element={<ProjectDetails />} />
               <Route path="/projects/:projectId/photos" element={<ProjectPhotos />} />
@@ -45,6 +61,13 @@ const App: React.FC = () => {
           </Layout>
         </DataProvider>
       </SupabaseProvider>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <AuthenticatedApp />
     </AuthProvider>
   );
 };
