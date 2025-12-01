@@ -35,9 +35,12 @@ export const SupabaseProvider: React.FC<{ children: ReactNode }> = ({ children }
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .single<Profile>();
 
       if (profileError) throw profileError;
+      
+      if (!profileData) return;
+      
       setProfile(profileData);
 
       // Fetch organization
@@ -46,7 +49,7 @@ export const SupabaseProvider: React.FC<{ children: ReactNode }> = ({ children }
           .from('organizations')
           .select('*')
           .eq('id', profileData.organization_id)
-          .single();
+          .single<Organization>();
 
         if (orgError) throw orgError;
         setOrganization(orgData);

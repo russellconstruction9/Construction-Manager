@@ -1,5 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './hooks/useAuth';
+import { SupabaseProvider } from './hooks/useSupabase';
 import { DataProvider } from './hooks/useDataContext';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
@@ -19,27 +21,31 @@ import MapView from './components/MapView';
 
 const App: React.FC = () => {
   return (
-    <DataProvider>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/projects" element={<Projects />} />
-          <Route path="/projects/:projectId" element={<ProjectDetails />} />
-          <Route path="/projects/:projectId/photos" element={<ProjectPhotos />} />
-          <Route path="/projects/:projectId/tasks" element={<Tasks />} />
-          <Route path="/tasks" element={<Tasks />} />
-          <Route path="/schedule" element={<Schedule />} />
-          <Route path="/map" element={<MapView />} />
-          <Route path="/team" element={<Team />} />
-          <Route path="/time-tracking" element={<TimeTracking />} />
-          <Route path="/punch-lists" element={<PunchLists />} />
-          <Route path="/punch-lists/:projectId" element={<PunchListDetails />} />
-          <Route path="/inventory" element={<Inventory />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Layout>
-    </DataProvider>
+    <AuthProvider>
+      <SupabaseProvider>
+        <DataProvider>
+          <Layout>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/projects" element={<Projects />} />
+              <Route path="/projects/:projectId" element={<ProjectDetails />} />
+              <Route path="/projects/:projectId/photos" element={<ProjectPhotos />} />
+              <Route path="/projects/:projectId/tasks" element={<Tasks />} />
+              <Route path="/tasks" element={<Tasks />} />
+              <Route path="/schedule" element={<Schedule />} />
+              <Route path="/map" element={<MapView />} />
+              <Route path="/team" element={<Team />} />
+              <Route path="/time-tracking" element={<TimeTracking />} />
+              <Route path="/punch-lists" element={<PunchLists />} />
+              <Route path="/punch-lists/:projectId" element={<PunchListDetails />} />
+              <Route path="/inventory" element={<Inventory />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Layout>
+        </DataProvider>
+      </SupabaseProvider>
+    </AuthProvider>
   );
 };
 
