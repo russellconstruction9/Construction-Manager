@@ -20,7 +20,7 @@ export interface Location {
 }
 
 export interface User {
-  id: number;
+  id: string | number; // UUID from Supabase or legacy number ID
   name: string;
   role: string; // Job Title
   roleType: UserRole; // Permission Level
@@ -28,24 +28,24 @@ export interface User {
   isClockedIn: boolean;
   hourlyRate: number;
   clockInTime?: Date;
-  currentProjectId?: number;
+  currentProjectId?: string | number;
 }
 
 export interface PunchListItem {
-  id: number;
+  id: string | number;
   text: string;
   isComplete: boolean;
 }
 
 export interface ProjectPhoto {
-  id: number;
-  imageDataUrl?: string; // Stored in IndexedDB, not with project object
+  id: string | number;
+  imageDataUrl?: string; // URL from Supabase Storage or legacy data URL
   description: string;
   dateAdded: Date;
 }
 
 export interface Project {
-  id: number;
+  id: string | number;
   name: string;
   address: string;
   type: ProjectType;
@@ -59,19 +59,19 @@ export interface Project {
 }
 
 export interface Task {
-  id: number;
+  id: string | number;
   title: string;
   description: string;
-  projectId: number;
-  assigneeId: number;
+  projectId: string | number;
+  assigneeId: string | number;
   dueDate: Date;
   status: TaskStatus;
 }
 
 export interface TimeLog {
-  id: number;
-  userId: number;
-  projectId: number;
+  id: string | number;
+  userId: string | number;
+  projectId: string | number;
   clockIn: Date;
   clockOut?: Date;
   durationMs?: number;
@@ -83,7 +83,7 @@ export interface TimeLog {
 }
 
 export interface InventoryItem {
-  id: number;
+  id: string | number;
   name: string;
   quantity: number;
   unit: string;
@@ -92,12 +92,12 @@ export interface InventoryItem {
 
 export interface InventoryOrderItem {
   type: 'inventory';
-  itemId: number;
+  itemId: string | number;
 }
 
 export interface ManualOrderItem {
   type: 'manual';
-  id: number;
+  id: string | number;
   name: string;
 }
 
@@ -115,7 +115,7 @@ export interface Chat {
 export type EstimateItemType = 'Labor' | 'Material' | 'Subcontractor' | 'Equipment' | 'Other';
 
 export interface EstimateItem {
-    id: number;
+    id?: string | number;
     type: EstimateItemType;
     description: string;
     quantity: number;
@@ -126,10 +126,10 @@ export interface EstimateItem {
 }
 
 export interface Estimate {
-    id: number;
-    projectId: number;
+    id: string | number;
+    projectId: string | number;
     name: string;
-    dateCreated: Date;
+    dateCreated?: Date;
     status: 'Draft' | 'Approved' | 'Rejected';
     items: EstimateItem[];
     totalAmount: number;
@@ -137,8 +137,8 @@ export interface Estimate {
 }
 
 export interface Expense {
-    id: number;
-    projectId: number;
+    id: string | number;
+    projectId: string | number;
     description: string;
     amount: number;
     date: Date;
