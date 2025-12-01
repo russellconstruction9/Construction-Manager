@@ -7,7 +7,6 @@ import Button from './Button';
 import { format } from 'date-fns';
 import { ChevronLeftIcon, CameraIcon, FileTextIcon, DollarSignIcon, Building2Icon, ClipboardCheckIcon, ListChecksIcon, PlusIcon } from './icons/Icons';
 import PhotoItem from './PhotoItem';
-import { getPhotosForProject } from '../utils/db';
 import { generatePdfReport } from '../utils/reportGenerator';
 import { generateInvoice } from '../utils/invoiceGenerator';
 import Estimates from './Estimates';
