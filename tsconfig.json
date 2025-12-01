@@ -18,12 +18,15 @@
     "moduleDetection": "force",
     "allowJs": true,
     "jsx": "react-jsx",
+    "jsxImportSource": "react",
     "paths": {
       "@/*": [
         "./*"
       ]
     },
     "allowImportingTsExtensions": true,
-    "noEmit": true
+    "noEmit": true,
+    "esModuleInterop": true,
+    "strict": true
   }
 }
