@@ -27,6 +27,7 @@ const AddPhotoModal: React.FC<AddPhotoModalProps> = ({ isOpen, onClose, projectI
     const { addPhoto } = useData();
     const [description, setDescription] = useState('');
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -49,6 +50,7 @@ const AddPhotoModal: React.FC<AddPhotoModalProps> = ({ isOpen, onClose, projectI
                 const dataUrlPromises = validFiles.map(fileToDataUrl);
                 const newDataUrls = await Promise.all(dataUrlPromises);
                 setImagePreviews(prev => [...prev, ...newDataUrls]);
+                setSelectedFiles(prev => [...prev, ...validFiles]);
             } catch (err) {
                 setError("Failed to process images. Please try again.");
                 console.error(err);
@@ -60,6 +62,7 @@ const AddPhotoModal: React.FC<AddPhotoModalProps> = ({ isOpen, onClose, projectI
 
     const handleRemoveImage = (indexToRemove: number) => {
         setImagePreviews(prev => prev.filter((_, index) => index !== indexToRemove));
+        setSelectedFiles(prev => prev.filter((_, index) => index !== indexToRemove));
         setError(null);
     };
 
@@ -73,11 +76,12 @@ const AddPhotoModal: React.FC<AddPhotoModalProps> = ({ isOpen, onClose, projectI
         
         setIsProcessing(true);
         try {
-            await addPhoto(projectId, imagePreviews, description);
+            await addPhoto(projectId, selectedFiles, description);
             
             // Reset state and close
             setDescription('');
             setImagePreviews([]);
+            setSelectedFiles([]);
             setIsProcessing(false);
             onClose();
         } catch (err: any) {

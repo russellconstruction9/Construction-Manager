@@ -2,7 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { SupabaseProvider } from './hooks/useSupabase';
-import { DataProvider } from './hooks/useDataContext';
+import { SupabaseDataProvider } from './hooks/useSupabaseData';
 import Layout from './components/Layout';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
@@ -39,7 +39,7 @@ const AuthenticatedApp: React.FC = () => {
 
   return (
     <SupabaseProvider>
-      <DataProvider>
+      <SupabaseDataProvider>
         <Layout>
           <Routes>
             <Route path="/" element={<Dashboard />} />
@@ -59,7 +59,7 @@ const AuthenticatedApp: React.FC = () => {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Layout>
-        </DataProvider>
+        </SupabaseDataProvider>
       </SupabaseProvider>
   );
 };
